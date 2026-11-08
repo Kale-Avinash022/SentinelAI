@@ -68,10 +68,10 @@ Adapt paths only if your implemented repository intentionally differs. Verify cu
 
 ## 7. Acceptance checklist
 
-- [ ] Python is 3.12+ and package installation targets .venv.
-- [ ] The smoke test passes from the repository root.
-- [ ] Lockfiles are reproducible and .env/.venv/state files are ignored.
-- [ ] .env.example contains placeholders only.
+- [x] Python is 3.12+ and package installation targets .venv.
+- [x] The smoke test passes from the repository root.
+- [x] Lockfiles are reproducible and .env/.venv/state files are ignored.
+- [x] .env.example contains placeholders only.
 
 ## 8. Done and handoff
 

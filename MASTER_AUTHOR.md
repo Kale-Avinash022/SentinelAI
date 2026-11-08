@@ -185,7 +185,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 * [x] [Day 001 — Define the product scope and safety contract](steps/step-001.md)
   * **Goal:** Product scope, 6 modules, STRIDE threat sketch, A/B/C recovery policy table, ADR-0001 (Modular Monolith).
   * **Deliverables:** `docs/product/project-brief.md`, `docs/architecture/ADR-0001-modular-monolith.md`, `docs/security/stride-threat-model.md`.
-* [ ] [Day 002 — Initialize the repository and Python environment](steps/step-002.md)
+* [x] [Day 002 — Initialize the repository and Python environment](steps/step-002.md)
   * **Goal:** Reproducible repo structure, Python 3.12 `.venv`, pip-tools locks, `.gitignore`, `.env.example`, smoke test.
   * **Deliverables:** `pyproject.toml`, `backend/requirements.in`, `backend/requirements-dev.lock`, `backend/tests/unit/test_smoke.py`.
 * [ ] [Day 003 — Add the local quality and security gate](steps/step-003.md)
@@ -489,7 +489,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 
 | Milestone | Status | Active Step | Completed Steps | Next Milestone |
 |---|---|---|---|---|
-| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 002](steps/step-002.md) | 1 / 84 (Core) | Complete Day 002 (Init Git, Repo & .venv) |
+| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 003](steps/step-003.md) | 2 / 84 (Core) | Complete Day 003 (Quality & Security Gate) |
 | **Phase 2: Auth & Isolation (Days 8–14)** | Not Started | — | 0 / 7 | Tenant RLS & API Key Management |
 | **Phase 3: LLM Gateway (Days 15–21)** | Not Started | — | 0 / 7 | Idempotency & Streaming Gateway |
 | **Phase 4: Telemetry & Queue (Days 22–28)**| Not Started | — | 0 / 7 | Transactional Outbox & Celery Workers |
@@ -511,4 +511,5 @@ Direct links, deliverables, and file maps for all 90 steps:
 |---|---|---|---|---|---|
 | 2026-11-07T20:15:00+05:30 | **System Bootstrap** | Initialized `MASTER_AUTHOR.md` system navigator, quick-jump directory, prompt context recipes, full 90-day step registry, and state tracker. | `MASTER_AUTHOR.md` | Antigravity AI | Verified against roadmap specifications. |
 | 2026-11-08T09:28:00+05:30 | **Day 001: Product Scope & Architecture** | Defined 6 core modules, 7 failure stories, STRIDE threat model, A/B/C recovery policy, ADR-0001 (Modular Monolith & Single Queue), and requirement-to-evidence matrix. | `docs/product/project-brief.md`, `docs/security/stride-threat-model.md`, `docs/security/recovery-policy.md`, `docs/architecture/ADR-0001-modular-monolith.md`, `docs/architecture/requirement-evidence-checklist.md`, `steps/step-001.md`, `steps/README.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: all 4 Day 001 acceptance checks passed. |
+| 2026-11-08T09:44:00+05:30 | **Day 002: Repo & Python Environment** | Initialized Git repository, `.gitignore`, `.env.example`, `.env`, `pyproject.toml`, `.venv` (Python 3.14.3), compiled `requirements.lock` & `requirements-dev.lock`, installed dependencies, wrote and passed smoke tests (4/4 passed), created Day 002 checkpoint commit. | `.gitignore`, `.env.example`, `.env`, `pyproject.toml`, `backend/requirements.in`, `backend/requirements.lock`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `backend/app/__init__.py`, `backend/tests/__init__.py`, `backend/tests/unit/test_smoke.py`, `steps/step-002.md`, `steps/README.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: 4/4 smoke tests passed, git checkpoint committed. |
 

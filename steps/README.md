@@ -113,7 +113,7 @@ The API and workers share domain code and PostgreSQL, but deploy as separate pro
 
 ### Week 1 — Foundation and architecture
 - [x] [Day 01 — Define the product scope and safety contract](step-001.md)
-- [ ] [Day 02 — Initialize the repository and Python environment](step-002.md)
+- [x] [Day 02 — Initialize the repository and Python environment](step-002.md)
 - [ ] [Day 03 — Add the local quality and security gate](step-003.md)
 - [ ] [Day 04 — Start PostgreSQL and Redis with Docker Compose](step-004.md)
 - [ ] [Day 05 — Connect SQLAlchemy and create the Alembic baseline](step-005.md)
