@@ -1,2 +1,1 @@
 """SentinelAI test suite package."""
-

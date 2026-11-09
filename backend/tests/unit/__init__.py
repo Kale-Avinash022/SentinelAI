@@ -1,2 +1,1 @@
 """SentinelAI unit tests."""
-

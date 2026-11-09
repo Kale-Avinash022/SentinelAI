@@ -188,7 +188,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 * [x] [Day 002 — Initialize the repository and Python environment](steps/step-002.md)
   * **Goal:** Reproducible repo structure, Python 3.12 `.venv`, pip-tools locks, `.gitignore`, `.env.example`, smoke test.
   * **Deliverables:** `pyproject.toml`, `backend/requirements.in`, `backend/requirements-dev.lock`, `backend/tests/unit/test_smoke.py`.
-* [ ] [Day 003 — Add the local quality and security gate](steps/step-003.md)
+* [x] [Day 003 — Add the local quality and security gate](steps/step-003.md)
   * **Goal:** Ruff, Mypy, Bandit, pip-audit, Pytest automation scripts (`scripts/check.sh`).
   * **Deliverables:** `pyproject.toml` (linters config), `scripts/check.ps1` / `scripts/check.sh`.
 * [ ] [Day 004 — Start PostgreSQL and Redis with Docker Compose](steps/step-004.md)
@@ -489,7 +489,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 
 | Milestone | Status | Active Step | Completed Steps | Next Milestone |
 |---|---|---|---|---|
-| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 003](steps/step-003.md) | 2 / 84 (Core) | Complete Day 003 (Quality & Security Gate) |
+| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 004](steps/step-004.md) | 3 / 84 (Core) | Complete Day 004 (Docker Compose Postgres/Redis) |
 | **Phase 2: Auth & Isolation (Days 8–14)** | Not Started | — | 0 / 7 | Tenant RLS & API Key Management |
 | **Phase 3: LLM Gateway (Days 15–21)** | Not Started | — | 0 / 7 | Idempotency & Streaming Gateway |
 | **Phase 4: Telemetry & Queue (Days 22–28)**| Not Started | — | 0 / 7 | Transactional Outbox & Celery Workers |
@@ -514,4 +514,5 @@ Direct links, deliverables, and file maps for all 90 steps:
 | 2026-11-08T09:44:00+05:30 | **Day 002: Repo & Python Environment** | Initialized Git repository, `.gitignore`, `.env.example`, `.env`, `pyproject.toml`, `.venv` (Python 3.14.3), compiled `requirements.lock` & `requirements-dev.lock`, installed dependencies, wrote and passed smoke tests (4/4 passed), created Day 002 checkpoint commit. | `.gitignore`, `.env.example`, `.env`, `pyproject.toml`, `backend/requirements.in`, `backend/requirements.lock`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `backend/app/__init__.py`, `backend/tests/__init__.py`, `backend/tests/unit/test_smoke.py`, `steps/step-002.md`, `steps/README.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: 4/4 smoke tests passed, git checkpoint committed. |
 | 2026-11-09T19:00:00+05:30 | **Step Tracking Infrastructure** | Created dedicated step completion and progress ledger `steps/TRACKER.md` tracking detailed evidence, deliverables, git commits, and acceptance checks for completed steps alongside full 90-step status matrix. | `steps/TRACKER.md`, `steps/README.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified against roadmap state (Days 001 & 002 completed). |
 | 2026-11-09T19:06:00+05:30 | **Repo Privacy Protection** | Added `steps/` to `.gitignore` and untracked `steps/` directory from Git cache to ensure internal daily step guides are kept local and excluded from the public GitHub repository. | `.gitignore`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: `steps/` untracked in Git, local files preserved. |
+| 2026-11-09T19:35:00+05:30 | **Day 003: Quality & Security Gate** | Implemented repeatable 7-point quality & security gate: Ruff format, Ruff lint, Mypy typing, Pytest unit tests, Bandit SAST, pip-audit SCA (0 CVEs), detect-secrets scanning (audited baseline), GitHub Actions CI workflow, and gate documentation. | `scripts/check.sh`, `scripts/check.ps1`, `.github/workflows/ci.yml`, `.secrets.baseline`, `docs/security/quality-and-security-gates.md`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `steps/step-003.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: all 7 quality/security checks passing cleanly locally. |
 
