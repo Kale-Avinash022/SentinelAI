@@ -1,5 +1,7 @@
 # SentinelAI — 84 core days + 6 optional advanced days
 
+> 📊 **Live Step Tracker:** See [TRACKER.md](TRACKER.md) for detailed execution status, completion evidence, git commits, and progress metrics.
+
 This roadmap turns the detailed SentinelAI brief into daily implementation work. **The project application has not been built yet.** These guides tell you what to build, how to approach it, why it matters, which earlier work it depends on, the workflow to follow, and how to prove the day is complete.
 
 ## Analysis of the brief
