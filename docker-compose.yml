@@ -1,0 +1,76 @@
+# SentinelAI — Local Infrastructure Compose Definition
+# Usage:
+#   docker compose --profile core up -d
+#   docker compose --profile core ps
+#   docker compose --profile core logs -f
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sentinel-postgres
+    profiles:
+      - core
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinel_ai}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_local_password}
+      POSTGRES_MIGRATOR_USER: ${POSTGRES_MIGRATOR_USER:-sentinel_migrator}
+      POSTGRES_MIGRATOR_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:-sentinel_migrator_password}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-sentinel_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-sentinel_local_password}
+    volumes:
+      # Named volume for persistent data — NEVER bind mount directly to OneDrive folder
+      - postgres_data:/var/lib/postgresql/data
+      # Initialization bootstrap script for roles and privileges
+      - ./infra/docker/postgres/init-roles.sh:/docker-entrypoint-initdb.d/01-init-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres} -d ${POSTGRES_DB:-sentinel_ai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    profiles:
+      - core
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      # Named volume for append-only log and snapshot persistence
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: sentinel_postgres_data
+  redis_data:
+    name: sentinel_redis_data
+
