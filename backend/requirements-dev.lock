@@ -129,6 +129,7 @@ python-dotenv==1.2.4
     #   uvicorn
 pyyaml==6.0.3
     # via
+    #   -r backend/requirements-dev.in
     #   bandit
     #   detect-secrets
     #   uvicorn
@@ -153,6 +154,8 @@ tomli==2.5.0
     # via pip-audit
 tomli-w==1.2.0
     # via pip-audit
+types-pyyaml==6.0.12.20261111
+    # via -r backend/requirements-dev.in
 typing-extensions==4.16.0
     # via
     #   anyio

@@ -9,7 +9,7 @@ COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
 INIT_ROLES_SCRIPT = REPO_ROOT / "infra" / "docker" / "postgres" / "init-roles.sh"
 
 
-def test_docker_compose_file_exists_and_parses():
+def test_docker_compose_file_exists_and_parses() -> None:
     """Ensure docker-compose.yml exists and parses as valid YAML."""
     assert COMPOSE_FILE.is_file(), f"docker-compose.yml not found at {COMPOSE_FILE}"
     with open(COMPOSE_FILE, encoding="utf-8") as f:
@@ -19,7 +19,7 @@ def test_docker_compose_file_exists_and_parses():
     assert "volumes" in config
 
 
-def test_core_profile_and_services_defined():
+def test_core_profile_and_services_defined() -> None:
     """Verify postgres and redis services exist under the core profile."""
     with open(COMPOSE_FILE, encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -34,7 +34,7 @@ def test_core_profile_and_services_defined():
         assert "core" in svc["profiles"], f"{svc_name} missing 'core' profile"
 
 
-def test_ports_bound_to_localhost_only():
+def test_ports_bound_to_localhost_only() -> None:
     """Verify ports are bound strictly to 127.0.0.1 (not 0.0.0.0 or LAN)."""
     with open(COMPOSE_FILE, encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -46,7 +46,7 @@ def test_ports_bound_to_localhost_only():
             assert p.startswith("127.0.0.1:"), f"{svc_name} port {p} is not restricted to 127.0.0.1"
 
 
-def test_named_volumes_used_for_data_persistence():
+def test_named_volumes_used_for_data_persistence() -> None:
     """Verify data persistence uses named Docker volumes rather than host bind mounts."""
     with open(COMPOSE_FILE, encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -67,7 +67,7 @@ def test_named_volumes_used_for_data_persistence():
     )
 
 
-def test_healthchecks_and_resource_limits_configured():
+def test_healthchecks_and_resource_limits_configured() -> None:
     """Verify healthchecks and deploy resource limits are present for container reliability."""
     with open(COMPOSE_FILE, encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -81,7 +81,7 @@ def test_healthchecks_and_resource_limits_configured():
         assert "limits" in svc["deploy"]["resources"]
 
 
-def test_database_bootstrap_script_security_and_roles():
+def test_database_bootstrap_script_security_and_roles() -> None:
     """Verify the PostgreSQL role bootstrap script enforces least-privilege and RLS safety."""
     assert INIT_ROLES_SCRIPT.is_file(), f"Init roles script not found at {INIT_ROLES_SCRIPT}"
     content = INIT_ROLES_SCRIPT.read_text(encoding="utf-8")

@@ -1,8 +1,19 @@
 # SentinelAI — Local Infrastructure Compose Definition
 # Usage:
-#   docker compose --profile core up -d
-#   docker compose --profile core ps
-#   docker compose --profile core logs -f
+#   docker compose config                          # validate specification
+#   docker compose --profile core up -d            # start PostgreSQL + Redis only
+#   docker compose --profile core ps               # inspect healthcheck status
+#   docker compose --profile core logs --tail=100  # inspect startup logs
+#   docker compose restart                         # restart; named volumes survive
+#   docker compose stop                            # stop; data volumes are PRESERVED
+#
+# Data lifecycle:
+#   - Stopping or restarting containers ALWAYS preserves the named volumes
+#     (sentinel_postgres_data, sentinel_redis_data). Local data survives.
+#   - Deleting volumes is a SEPARATE, DESTRUCTIVE decision:
+#     docker compose --profile core down -v   # wipes all local DB/cache data
+#   - Role bootstrap (init-roles.sh) runs only when postgres_data is empty.
+#   - Never bind-mount OneDrive-synced folders for database storage.
 
 services:
   postgres:
