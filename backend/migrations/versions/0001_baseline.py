@@ -44,7 +44,10 @@ def upgrade() -> None:
             sa.column("description", sa.Text),
         ),
         [
-            {"version": "1", "description": "Day 005 baseline - async SQLAlchemy + Alembic pipeline verified"},
+            {
+                "version": "1",
+                "description": "Day 005 baseline - async SQLAlchemy + Alembic pipeline verified",
+            },
         ],
     )
 

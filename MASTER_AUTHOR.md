@@ -36,9 +36,9 @@
 |---|---|---|---|---|
 | **Frontend UI & Dashboard** | `frontend/src/` | `frontend/package.json`, `vite.config.ts`, `tailwind.config.js` | [Day 032](steps/step-032.md)–[Day 035](steps/step-035.md), [Day 041](steps/step-041.md), [Day 055](steps/step-055.md) | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Lucide Icons |
 | **API Server & Routing** | `backend/app/api/` | `backend/app/main.py`, `backend/app/core/config.py` | [Day 006](steps/step-006.md), [Day 012](steps/step-012.md), [Day 031](steps/step-031.md), [Day 041](steps/step-041.md) | FastAPI, Pydantic v2, Python 3.12+ |
-| **Auth, RLS & Multi-Tenancy** | `backend/app/auth/`, `backend/app/models/tenant.py` | `backend/alembic/versions/` (RLS policies) | [Day 008](steps/step-008.md)–[Day 014](steps/step-014.md), [Day 060](steps/step-060.md) | PostgreSQL 16 RLS, Argon2, JWT, Scoped API Keys, Append-only Audit |
+| **Auth, RLS & Multi-Tenancy** | `backend/app/auth/`, `backend/app/models/tenant.py` | `backend/migrations/versions/` (RLS policies) | [Day 008](steps/step-008.md)–[Day 014](steps/step-014.md), [Day 060](steps/step-060.md) | PostgreSQL 16 RLS, Argon2, JWT, Scoped API Keys, Append-only Audit |
 | **LLM Gateway & Adapters** | `backend/app/gateway/` | `backend/app/models/provider.py`, `backend/app/gateway/router.py` | [Day 015](steps/step-015.md)–[Day 021](steps/step-021.md) | LiteLLM, Deterministic Mock Providers, Idempotency claims |
-| **Database & Migrations** | `backend/app/db/`, `backend/app/models/` | `backend/alembic/`, `backend/alembic.ini` | [Day 004](steps/step-004.md), [Day 005](steps/step-005.md), [Day 009](steps/step-009.md), [Day 067](steps/step-067.md) | PostgreSQL 16, async SQLAlchemy 2.0, Alembic |
+| **Database & Migrations** | `backend/app/infrastructure/`, `backend/app/models/` | `backend/alembic.ini`, `backend/migrations/` | [Day 004](steps/step-004.md), [Day 005](steps/step-005.md), [Day 009](steps/step-009.md), [Day 067](steps/step-067.md) | PostgreSQL 16, async SQLAlchemy 2.0, Alembic |
 | **Outbox & Asynchronous Workers** | `backend/app/workers/`, `backend/app/outbox/` | `backend/app/core/celery_app.py` | [Day 022](steps/step-022.md)–[Day 024](steps/step-024.md), [Day 027](steps/step-027.md), [Day 073](steps/step-073.md) | Celery, Redis 7 (Local), AWS SQS (Cloud), Transactional Outbox |
 | **Telemetry & Observability** | `backend/app/telemetry/`, `backend/app/metrics/` | `infra/monitoring/` (Prometheus/Grafana configs) | [Day 025](steps/step-025.md), [Day 026](steps/step-026.md), [Day 028](steps/step-028.md)–[Day 030](steps/step-030.md) | OpenTelemetry SDK, Prometheus Client, Grafana Dashboards |
 | **Risk Detection & Incidents** | `backend/app/detectors/`, `backend/app/incidents/` | `backend/app/models/incident.py` | [Day 036](steps/step-036.md)–[Day 042](steps/step-042.md) | Deterministic + Statistical Risk Models, Deduplicating Incident Engine |
@@ -74,7 +74,7 @@ When issuing prompts to code or debug SentinelAI, refer to these targeted prompt
 
 ### 🛡️ Auth, Security & RLS Modifications
 * **Read First:** [step-008.md](steps/step-008.md), [step-010.md](steps/step-010.md), [step-011.md](steps/step-011.md), [step-060.md](steps/step-060.md).
-* **Context to Feed:** `backend/app/db/session.py`, `backend/alembic/versions/` (RLS migration), `backend/tests/security/test_rls.py`.
+* **Context to Feed:** `backend/app/infrastructure/database.py`, `backend/migrations/versions/` (RLS migration), `backend/tests/security/test_rls.py`.
 * **Rules:**
   1. Application connects as non-superuser role `sentinel_app`.
   2. Every query must run with `SET LOCAL app.current_tenant = '<tenant_id>'`.
@@ -194,9 +194,9 @@ Direct links, deliverables, and file maps for all 90 steps:
 * [x] [Day 004 — Start PostgreSQL and Redis with Docker Compose](steps/step-004.md)
   * **Goal:** Docker Compose stack with PostgreSQL 16 & Redis 7, named volumes, health checks, localhost-only ports, least-privilege roles. Host port 5433 → container 5432 (native Windows PostgreSQL owns 5432).
   * **Deliverables:** `docker-compose.yml`, `infra/docker/postgres/init-roles.sh`, `docs/infrastructure/local-dev-stack.md`, `backend/tests/unit/test_docker_compose.py`.
-* [ ] [Day 005 — Connect SQLAlchemy and create the Alembic baseline](steps/step-005.md)
-  * **Goal:** Async engine, session management, Alembic migration bootstrap, test DB rollback fixtures.
-  * **Deliverables:** `backend/app/db/session.py`, `backend/alembic/`, `backend/tests/conftest.py`.
+* [x] [Day 005 — Connect SQLAlchemy and create the Alembic baseline](steps/step-005.md)
+  * **Goal:** Async engine/session lifecycle (dual DSN identities, no import-time connections), intentional Alembic baseline, isolated-DB upgrade/downgrade round trip.
+  * **Deliverables:** `backend/app/infrastructure/database.py`, `backend/app/models/`, `backend/alembic.ini`, `backend/migrations/`, `backend/tests/integration/test_database.py`, `backend/tests/conftest.py`.
 * [ ] [Day 006 — Build the FastAPI application shell](steps/step-006.md)
   * **Goal:** Application factory, `/healthz`, `/readyz`, structured JSON logging, correlation ID middleware.
   * **Deliverables:** `backend/app/main.py`, `backend/app/core/logging.py`, `backend/app/api/health.py`.
@@ -210,10 +210,10 @@ Direct links, deliverables, and file maps for all 90 steps:
   * **Deliverables:** `backend/app/models/tenant.py`, `backend/app/models/user.py`, `backend/app/models/application.py`.
 * [ ] [Day 009 — Apply tenant schema migrations and database grants](steps/step-009.md)
   * **Goal:** Database migrations for tenant schemas, constraints, indexes, and non-owner application role permissions.
-  * **Deliverables:** `backend/alembic/versions/*_tenants_and_rbac.py`.
+  * **Deliverables:** `backend/migrations/versions/*_tenants_and_rbac.py`.
 * [ ] [Day 010 — Enforce PostgreSQL row-level security](steps/step-010.md)
   * **Goal:** RLS policies on all tenant tables using `SET LOCAL app.current_tenant`, forced RLS on owner role.
-  * **Deliverables:** `backend/alembic/versions/*_rls_policies.py`, session tenant context manager.
+  * **Deliverables:** `backend/migrations/versions/*_rls_policies.py`, session tenant context manager.
 * [ ] [Day 011 — Prove cross-tenant isolation with negative tests](steps/step-011.md)
   * **Goal:** Rigorous test suite proving cross-tenant read/write leakage fails cleanly (empty or 403).
   * **Deliverables:** `backend/tests/security/test_tenant_isolation.py`.
@@ -400,7 +400,7 @@ Direct links, deliverables, and file maps for all 90 steps:
   * **Deliverables:** `reports/benchmarks/recovery_timing_report.md`.
 * [ ] [Day 067 — Tune database queries and decide on partitioning](steps/step-067.md)
   * **Goal:** `EXPLAIN ANALYZE` on request log queries; evaluate range partitioning on `created_at`.
-  * **Deliverables:** `backend/alembic/versions/*_query_optimizations.py`.
+  * **Deliverables:** `backend/migrations/versions/*_query_optimizations.py`.
 * [ ] [Day 068 — Report LLM retry evaluation and infrastructure costs](steps/step-068.md)
   * **Goal:** Calculate cost avoided by idempotency and smart circuit breakers vs. naive replay.
   * **Deliverables:** `docs/reports/cost_avoidance_analysis.md`.
@@ -489,7 +489,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 
 | Milestone | Status | Active Step | Completed Steps | Next Milestone |
 |---|---|---|---|---|
-| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 005](steps/step-005.md) | 4 / 84 (Core) | Complete Day 005 (SQLAlchemy async + Alembic baseline) |
+| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 006](steps/step-006.md) | 5 / 84 (Core) | Complete Day 006 (FastAPI application shell) |
 | **Phase 2: Auth & Isolation (Days 8–14)** | Not Started | — | 0 / 7 | Tenant RLS & API Key Management |
 | **Phase 3: LLM Gateway (Days 15–21)** | Not Started | — | 0 / 7 | Idempotency & Streaming Gateway |
 | **Phase 4: Telemetry & Queue (Days 22–28)**| Not Started | — | 0 / 7 | Transactional Outbox & Celery Workers |
@@ -516,4 +516,6 @@ Direct links, deliverables, and file maps for all 90 steps:
 | 2026-11-09T19:06:00+05:30 | **Repo Privacy Protection** | Added `steps/` to `.gitignore` and untracked `steps/` directory from Git cache to ensure internal daily step guides are kept local and excluded from the public GitHub repository. | `.gitignore`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: `steps/` untracked in Git, local files preserved. |
 | 2026-11-09T19:35:00+05:30 | **Day 003: Quality & Security Gate** | Implemented repeatable 7-point quality & security gate: Ruff format, Ruff lint, Mypy typing, Pytest unit tests, Bandit SAST, pip-audit SCA (0 CVEs), detect-secrets scanning (audited baseline), GitHub Actions CI workflow, and gate documentation. | `scripts/check.sh`, `scripts/check.ps1`, `.github/workflows/ci.yml`, `.secrets.baseline`, `docs/security/quality-and-security-gates.md`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `steps/step-003.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: all 7 quality/security checks passing cleanly locally. |
 | 2026-11-12T18:15:00+05:30 | **Day 004: Local PostgreSQL/Redis Stack** | Started core Docker Compose profile (PostgreSQL 16 + Redis 7) with named volumes, health checks, resource limits, and localhost-only bindings; remapped host port 5432→5433 due to a conflicting native Windows PostgreSQL installation; verified live: healthy stack, least-privilege roles (`sentinel_app` NOBYPASSRLS/non-owner, CREATE denied), data survived restart; documented stop-vs-`down -v` volume lifecycle; added `pyyaml`/`types-pyyaml` to dev locks and made compose tests mypy-clean; all 7 quality gates pass. | `docker-compose.yml`, `.env`, `.env.example`, `docs/infrastructure/local-dev-stack.md`, `backend/tests/unit/test_docker_compose.py`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `steps/step-004.md`, `steps/README.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Qoder AI | Verified: 4/4 Day 004 runtime acceptance checks passed. |
+| 2026-11-12T19:40:00+05:30 | **Day 005: Async SQLAlchemy & Alembic Baseline** | Added async SQLAlchemy 2.1.8 + asyncpg + Alembic 1.20.1 + python-dotenv (pip-tools relocked); built `app/infrastructure/database.py` (dual DSN factories, `session_scope`, no import-time connections) and `app/models` naming-convention metadata; configured async Alembic env resolving only the `sentinel_migrator` DSN; authored intentional `0001_baseline` revision (`schema_info`); wrote 4 integration tests on disposable `sentinel_ai_test` (repeatable upgrade, downgrade/upgrade round trip, `sentinel_app` least-privilege proof, pool checkout==0 lifecycle); fixed SQLAlchemy 2.1 `str(URL)` password masking via `render_as_string(hide_password=False)`; all 7 gates + 14/14 tests pass. | `backend/requirements.in`, `backend/requirements.lock`, `backend/requirements-dev.lock`, `backend/app/infrastructure/`, `backend/app/models/`, `backend/alembic.ini`, `backend/migrations/`, `backend/tests/conftest.py`, `backend/tests/integration/`, `steps/step-005.md`, `steps/README.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Qoder AI | Verified: 4/4 Day 005 acceptance checks and full gate passed. |
+| 2026-11-12T20:05:00+05:30 | **Master Author Maintenance** | Aligned all forward-looking references with the implemented layout: migration paths `backend/alembic/versions/` → `backend/migrations/versions/` (Days 009/010/067 registry, quick-jump Auth row, security prompt recipe) and session module `backend/app/db/session.py` → `backend/app/infrastructure/database.py`. Recorded open item: six Day 005 polish files (mypy/ruff fixes, `_checked_out` helper, `path_separator`, seed text, `.secrets.baseline`) remain uncommitted after user checkpoints `50c85fe`/`6625b59`; local port note stands (Docker PostgreSQL on host 5433, native Windows PostgreSQL still on 5432). | `MASTER_AUTHOR.md` | Qoder AI | Verified against `git status` and repository tree. |
 

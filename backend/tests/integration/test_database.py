@@ -17,24 +17,30 @@ import pytest_asyncio
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
-from sqlalchemy.engine import make_url
-from sqlalchemy.exc import DBAPIError
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.pool import NullPool
-
 from app.infrastructure.database import (
     application_database_url,
     create_session_factory,
     migration_database_url,
     session_scope,
 )
+from sqlalchemy.engine import URL, make_url
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.pool import NullPool
 
 pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 TEST_DB = "sentinel_ai_test"
-REPO_ROOT = Path(__file__).resolve().parents[3]  # .../SentinelAI (file is backend/tests/integration/)
+REPO_ROOT = (
+    Path(__file__).resolve().parents[3]
+)  # .../SentinelAI (file is backend/tests/integration/)
 ALEMBIC_INI = REPO_ROOT / "backend" / "alembic.ini"
 BASELINE_REVISION = "0001_baseline"
+
+
+def _render(url: URL) -> str:
+    """Full DSN string with the password intact (SQLAlchemy 2.1 ``str(url)`` masks it)."""
+    return url.render_as_string(hide_password=False)
 
 
 def _alembic_config(url: str) -> Config:
@@ -57,6 +63,12 @@ async def _table_exists(engine: AsyncEngine, table: str) -> bool:
     return found.scalar() is not None
 
 
+def _checked_out(engine: AsyncEngine) -> int:
+    """Connections currently checked out; ``checkedout()`` exists on every pool at runtime."""
+    result: int = engine.pool.checkedout()  # type: ignore[attr-defined]
+    return result
+
+
 @pytest_asyncio.fixture(loop_scope="module", scope="module")
 async def migrated_test_database() -> AsyncIterator[dict[str, str]]:
     """Create sentinel_ai_test, grant app-role access, upgrade to head, yield DSNs."""
@@ -67,11 +79,15 @@ async def migrated_test_database() -> AsyncIterator[dict[str, str]]:
     assert migrator_url.username == "sentinel_migrator", "migration DSN must use sentinel_migrator"
 
     # 1. Recreate the disposable database as the migration owner.
-    admin = create_async_engine(migrator_url.set(database="postgres"), isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    admin = create_async_engine(
+        migrator_url.set(database="postgres"), isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
     async with admin.connect() as conn:
         await conn.execute(
-            sa.text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                    "WHERE datname = :db AND pid <> pg_backend_pid()"),
+            sa.text(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = :db AND pid <> pg_backend_pid()"
+            ),
             {"db": TEST_DB},
         )
         await conn.execute(sa.text(f'DROP DATABASE IF EXISTS "{TEST_DB}"'))
@@ -82,30 +98,38 @@ async def migrated_test_database() -> AsyncIterator[dict[str, str]]:
     #    sentinel_app (default privileges from init-roles.sh are per-database,
     #    so they must be re-declared inside the new database).
     test_migrator_url = migrator_url.set(database=TEST_DB)
-    mig_engine = create_async_engine(test_migrator_url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    mig_engine = create_async_engine(
+        test_migrator_url, isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
     async with mig_engine.connect() as conn:
         await conn.execute(sa.text(f'GRANT CONNECT ON DATABASE "{TEST_DB}" TO {app_user}'))
         await conn.execute(sa.text(f"GRANT USAGE ON SCHEMA public TO {app_user}"))
         await conn.execute(
-            sa.text("ALTER DEFAULT PRIVILEGES FOR ROLE sentinel_migrator IN SCHEMA public "
-                    f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {app_user}")
+            sa.text(
+                "ALTER DEFAULT PRIVILEGES FOR ROLE sentinel_migrator IN SCHEMA public "
+                f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {app_user}"
+            )
         )
         await conn.execute(
-            sa.text("ALTER DEFAULT PRIVILEGES FOR ROLE sentinel_migrator IN SCHEMA public "
-                    f"GRANT USAGE, SELECT ON SEQUENCES TO {app_user}")
+            sa.text(
+                "ALTER DEFAULT PRIVILEGES FOR ROLE sentinel_migrator IN SCHEMA public "
+                f"GRANT USAGE, SELECT ON SEQUENCES TO {app_user}"
+            )
         )
     await mig_engine.dispose()
 
     # 3. Alembic baseline upgrade (migrator identity only).
-    await _alembic(str(test_migrator_url), "upgrade", "head")
+    await _alembic(_render(test_migrator_url), "upgrade", "head")
 
     yield {
-        "migrator_url": str(test_migrator_url),
-        "app_url": str(app_url.set(database=TEST_DB)),
+        "migrator_url": _render(test_migrator_url),
+        "app_url": _render(app_url.set(database=TEST_DB)),
     }
 
     # 4. Teardown: drop the whole disposable database.
-    admin = create_async_engine(migrator_url.set(database="postgres"), isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    admin = create_async_engine(
+        migrator_url.set(database="postgres"), isolation_level="AUTOCOMMIT", poolclass=NullPool
+    )
     async with admin.connect() as conn:
         await conn.execute(sa.text(f'DROP DATABASE IF EXISTS "{TEST_DB}" WITH (FORCE)'))
     await admin.dispose()
@@ -121,8 +145,14 @@ async def test_upgrade_is_repeatable_and_records_one_current_revision(
     engine = create_async_engine(url, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
-            rows = (await conn.execute(sa.text("SELECT version_num FROM alembic_version"))).scalars().all()
-            seeded = (await conn.execute(sa.text("SELECT version FROM schema_info"))).scalars().all()
+            rows = (
+                (await conn.execute(sa.text("SELECT version_num FROM alembic_version")))
+                .scalars()
+                .all()
+            )
+            seeded = (
+                (await conn.execute(sa.text("SELECT version FROM schema_info"))).scalars().all()
+            )
     finally:
         await engine.dispose()
 
@@ -137,11 +167,17 @@ async def test_downgrade_upgrade_round_trip(migrated_test_database: dict[str, st
     try:
         await _alembic(url, "downgrade", "base")
         assert not await _table_exists(engine, "schema_info")
-        assert not await _table_exists(engine, "alembic_version")
+        # Alembic empties but does not drop its own version table on downgrade.
+        async with engine.connect() as conn:
+            stamped = (
+                (await conn.execute(sa.text("SELECT version_num FROM alembic_version")))
+                .scalars()
+                .all()
+            )
+        assert stamped == []
 
         await _alembic(url, "upgrade", "head")
         assert await _table_exists(engine, "schema_info")
-        assert await _table_exists(engine, "alembic_version")
     finally:
         await engine.dispose()
 
@@ -150,14 +186,20 @@ async def test_application_connections_use_sentinel_app_without_ddl_power(
     migrated_test_database: dict[str, str],
 ) -> None:
     """Acceptance: 'application connections use sentinel_app, migrations use sentinel_migrator.'"""
-    engine = create_async_engine(migrated_test_database["app_url"], pool_pre_ping=True, poolclass=NullPool)
+    engine = create_async_engine(
+        migrated_test_database["app_url"], pool_pre_ping=True, poolclass=NullPool
+    )
     factory = create_session_factory(engine)
     try:
         async with session_scope(factory) as session:
             current_user = (await session.execute(sa.text("SELECT current_user"))).scalar()
-            is_superuser = (await session.execute(sa.text("SELECT current_setting('is_superuser')"))).scalar()
+            is_superuser = (
+                await session.execute(sa.text("SELECT current_setting('is_superuser')"))
+            ).scalar()
             bypassrls = (
-                await session.execute(sa.text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user"))
+                await session.execute(
+                    sa.text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
+                )
             ).scalar()
         assert current_user == "sentinel_app"
         assert is_superuser == "off"
@@ -182,14 +224,14 @@ async def test_sessions_are_returned_cleanly_to_the_pool(
         for _ in range(10):  # repeatedly open and close sessions
             async with session_scope(factory) as session:
                 assert (await session.execute(sa.text("SELECT 1"))).scalar() == 1
-        assert engine.pool.checkedout() == 0, "no connection may remain checked out"
+        assert _checked_out(engine) == 0, "no connection may remain checked out"
 
         # A rolled-back scope must not leak the connection either.
         with pytest.raises(RuntimeError):
             async with session_scope(factory) as session:
                 await session.execute(sa.text("SELECT 1"))
                 raise RuntimeError("simulated failure mid-transaction")
-        assert engine.pool.checkedout() == 0
+        assert _checked_out(engine) == 0
     finally:
         await engine.dispose()
-        assert engine.pool.checkedout() == 0
+        assert _checked_out(engine) == 0

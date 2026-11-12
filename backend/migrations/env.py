@@ -16,14 +16,12 @@ import os
 from logging.config import fileConfig
 from pathlib import Path
 
+from alembic import context
+from app.models import metadata as target_metadata
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
-
-from alembic import context
-
-from app.models import metadata as target_metadata
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

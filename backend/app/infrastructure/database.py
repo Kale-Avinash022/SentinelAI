@@ -59,12 +59,12 @@ def application_database_url() -> str:
 
 def create_migration_engine(**overrides: object) -> AsyncEngine:
     """Engine for Alembic/DDL work. Keyword overrides allow test-specific pools."""
-    return create_async_engine(migration_database_url(), pool_pre_ping=True, **overrides)  # type: ignore[arg-type]
+    return create_async_engine(migration_database_url(), pool_pre_ping=True, **overrides)
 
 
 def create_application_engine(**overrides: object) -> AsyncEngine:
     """Engine for application runtime traffic as ``sentinel_app``."""
-    return create_async_engine(application_database_url(), pool_pre_ping=True, **overrides)  # type: ignore[arg-type]
+    return create_async_engine(application_database_url(), pool_pre_ping=True, **overrides)
 
 
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
