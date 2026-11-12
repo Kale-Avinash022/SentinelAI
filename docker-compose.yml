@@ -22,7 +22,8 @@ services:
     profiles:
       - core
     ports:
-      - "127.0.0.1:5432:5432"
+      # Host 5433 -> container 5432 (native Windows PostgreSQL already owns host 5432)
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sentinel_ai}
       POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}

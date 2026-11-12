@@ -17,8 +17,10 @@ docker compose --profile core logs --tail=100  # inspect role-bootstrap output
 ```
 
 Connection details live in the ignored `.env`; placeholders are in `.env.example`.
-Both services bind **only to `127.0.0.1`** (ports 5432 and 6379) — nothing is
-exposed to the LAN or internet.
+Both services bind **only to `127.0.0.1`** — nothing is exposed to the LAN or
+internet. PostgreSQL is published on host port **5433** (container port 5432)
+because a native Windows PostgreSQL installation already owns host port 5432
+on the development machines; Redis uses host port 6379.
 
 ## 2. Persistence model
 

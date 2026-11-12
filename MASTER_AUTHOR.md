@@ -191,9 +191,9 @@ Direct links, deliverables, and file maps for all 90 steps:
 * [x] [Day 003 — Add the local quality and security gate](steps/step-003.md)
   * **Goal:** Ruff, Mypy, Bandit, pip-audit, Pytest automation scripts (`scripts/check.sh`).
   * **Deliverables:** `pyproject.toml` (linters config), `scripts/check.ps1` / `scripts/check.sh`.
-* [ ] [Day 004 — Start PostgreSQL and Redis with Docker Compose](steps/step-004.md)
-  * **Goal:** Docker Compose stack with PostgreSQL 16 & Redis 7, named volumes, health checks, non-root user setup.
-  * **Deliverables:** `docker-compose.yml`, `infra/docker/postgres/init-roles.sql`.
+* [x] [Day 004 — Start PostgreSQL and Redis with Docker Compose](steps/step-004.md)
+  * **Goal:** Docker Compose stack with PostgreSQL 16 & Redis 7, named volumes, health checks, localhost-only ports, least-privilege roles. Host port 5433 → container 5432 (native Windows PostgreSQL owns 5432).
+  * **Deliverables:** `docker-compose.yml`, `infra/docker/postgres/init-roles.sh`, `docs/infrastructure/local-dev-stack.md`, `backend/tests/unit/test_docker_compose.py`.
 * [ ] [Day 005 — Connect SQLAlchemy and create the Alembic baseline](steps/step-005.md)
   * **Goal:** Async engine, session management, Alembic migration bootstrap, test DB rollback fixtures.
   * **Deliverables:** `backend/app/db/session.py`, `backend/alembic/`, `backend/tests/conftest.py`.
@@ -489,7 +489,7 @@ Direct links, deliverables, and file maps for all 90 steps:
 
 | Milestone | Status | Active Step | Completed Steps | Next Milestone |
 |---|---|---|---|---|
-| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 004](steps/step-004.md) | 3 / 84 (Core) | Complete Day 004 (Docker Compose Postgres/Redis) |
+| **Phase 1: Foundation (Days 1–7)** | **In Progress** | [Day 005](steps/step-005.md) | 4 / 84 (Core) | Complete Day 005 (SQLAlchemy async + Alembic baseline) |
 | **Phase 2: Auth & Isolation (Days 8–14)** | Not Started | — | 0 / 7 | Tenant RLS & API Key Management |
 | **Phase 3: LLM Gateway (Days 15–21)** | Not Started | — | 0 / 7 | Idempotency & Streaming Gateway |
 | **Phase 4: Telemetry & Queue (Days 22–28)**| Not Started | — | 0 / 7 | Transactional Outbox & Celery Workers |
@@ -515,4 +515,5 @@ Direct links, deliverables, and file maps for all 90 steps:
 | 2026-11-09T19:00:00+05:30 | **Step Tracking Infrastructure** | Created dedicated step completion and progress ledger `steps/TRACKER.md` tracking detailed evidence, deliverables, git commits, and acceptance checks for completed steps alongside full 90-step status matrix. | `steps/TRACKER.md`, `steps/README.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified against roadmap state (Days 001 & 002 completed). |
 | 2026-11-09T19:06:00+05:30 | **Repo Privacy Protection** | Added `steps/` to `.gitignore` and untracked `steps/` directory from Git cache to ensure internal daily step guides are kept local and excluded from the public GitHub repository. | `.gitignore`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: `steps/` untracked in Git, local files preserved. |
 | 2026-11-09T19:35:00+05:30 | **Day 003: Quality & Security Gate** | Implemented repeatable 7-point quality & security gate: Ruff format, Ruff lint, Mypy typing, Pytest unit tests, Bandit SAST, pip-audit SCA (0 CVEs), detect-secrets scanning (audited baseline), GitHub Actions CI workflow, and gate documentation. | `scripts/check.sh`, `scripts/check.ps1`, `.github/workflows/ci.yml`, `.secrets.baseline`, `docs/security/quality-and-security-gates.md`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `steps/step-003.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Antigravity AI | Verified: all 7 quality/security checks passing cleanly locally. |
+| 2026-11-12T18:15:00+05:30 | **Day 004: Local PostgreSQL/Redis Stack** | Started core Docker Compose profile (PostgreSQL 16 + Redis 7) with named volumes, health checks, resource limits, and localhost-only bindings; remapped host port 5432→5433 due to a conflicting native Windows PostgreSQL installation; verified live: healthy stack, least-privilege roles (`sentinel_app` NOBYPASSRLS/non-owner, CREATE denied), data survived restart; documented stop-vs-`down -v` volume lifecycle; added `pyyaml`/`types-pyyaml` to dev locks and made compose tests mypy-clean; all 7 quality gates pass. | `docker-compose.yml`, `.env`, `.env.example`, `docs/infrastructure/local-dev-stack.md`, `backend/tests/unit/test_docker_compose.py`, `backend/requirements-dev.in`, `backend/requirements-dev.lock`, `steps/step-004.md`, `steps/README.md`, `steps/TRACKER.md`, `MASTER_AUTHOR.md` | Qoder AI | Verified: 4/4 Day 004 runtime acceptance checks passed. |
 
