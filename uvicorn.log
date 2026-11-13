@@ -1,0 +1,16 @@
+INFO:     Started server process [3120]
+INFO:     Waiting for application startup.
+{"timestamp": "2026-11-13T08:09:22+0530", "level": "INFO", "logger": "app.main", "message": "application startup complete", "event": "startup", "environment": "development"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+{"timestamp": "2026-11-13T08:09:32+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "393f64afc6364854a5d7e40c6b6e5e2f", "method": "GET", "route": "/health", "status_code": 200, "duration_ms": 2.9, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:36+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "31ffeac5e1914156a04cac3315a289ed", "method": "GET", "route": "/ready", "status_code": 503, "duration_ms": 4030.7, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:50+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "live-trace-0001", "method": "GET", "route": "/api/v1/version", "status_code": 200, "duration_ms": 2.66, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:50+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "55023136b91049bab883f7bc4e3fc8bf", "method": "GET", "route": "/api/v1/does-not-exist", "status_code": 404, "duration_ms": 0.33, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:50+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "b2d473da25d6496b9d88e63e0d0d23a1", "method": "POST", "route": "/api/v1/echo", "status_code": 422, "duration_ms": 0.69, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:50+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "43e5d7d236114a94a7f0ce6fbd15241e", "method": "GET", "route": "/docs", "status_code": 200, "duration_ms": 0.23, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:09:50+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "fd4bd71737a64f59bc088764cce5fc22", "method": "GET", "route": "/openapi.json", "status_code": 200, "duration_ms": 7.29, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:11:13+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "f1dc379e058d42c9b67642fc3e90fb6c", "method": "POST", "route": "/api/v1/echo", "status_code": 422, "duration_ms": 0.92, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:11:13+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "ec295c5e76fb46999e560644c96fda24", "method": "POST", "route": "/api/v1/echo", "status_code": 200, "duration_ms": 0.81, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:13:00+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "b72da1f00b0a42658ede22cd97147699", "method": "POST", "route": "/api/v1/echo", "status_code": 413, "duration_ms": 0.15, "client_ip": "127.0.0.1"}
+{"timestamp": "2026-11-13T08:15:21+0530", "level": "INFO", "logger": "app.access", "message": "request completed", "request_id": "2f22e76eb61d4dfea798769062f1493d", "method": "GET", "route": "/ready", "status_code": 200, "duration_ms": 44.94, "client_ip": "127.0.0.1"}

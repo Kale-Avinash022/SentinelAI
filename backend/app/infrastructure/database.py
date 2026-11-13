@@ -67,6 +67,15 @@ def create_application_engine(**overrides: object) -> AsyncEngine:
     return create_async_engine(application_database_url(), pool_pre_ping=True, **overrides)
 
 
+def create_engine_from_url(url: str, **overrides: object) -> AsyncEngine:
+    """Engine for an explicitly supplied DSN (typed-settings path, tests).
+
+    Callers must pass the *application* role URL; upholding the identity
+    split remains the responsibility of the settings validator.
+    """
+    return create_async_engine(url, pool_pre_ping=True, **overrides)
+
+
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """Session factory bound to ``engine``; sessions manage their own transactions."""
     return async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
