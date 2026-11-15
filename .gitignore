@@ -71,6 +71,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Local runtime output (never tracked)
+uvicorn.log
+uvicorn.out
+*.log
+
 # Internal roadmap & step guides
 steps/
 MASTER_AUTHOR.md
