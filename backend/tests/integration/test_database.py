@@ -35,7 +35,9 @@ REPO_ROOT = (
     Path(__file__).resolve().parents[3]
 )  # .../SentinelAI (file is backend/tests/integration/)
 ALEMBIC_INI = REPO_ROOT / "backend" / "alembic.ini"
-BASELINE_REVISION = "0001_baseline"
+# The baseline seed row stamped by 0001_baseline; independent of which revision
+# is currently head (the tenant revision 0002 does not touch schema_info).
+BASELINE_SEED_VERSION = "1"
 
 
 def _render(url: URL) -> str:
@@ -156,8 +158,10 @@ async def test_upgrade_is_repeatable_and_records_one_current_revision(
     finally:
         await engine.dispose()
 
-    assert rows == [BASELINE_REVISION], "exactly one current revision must be stamped"
-    assert seeded == ["1"], "baseline seed row must be present"
+    # Exactly one head revision is stamped (name-agnostic so adding later
+    # migrations never breaks this contract); the baseline seed row persists.
+    assert len(rows) == 1, f"exactly one current revision must be stamped, got {rows}"
+    assert seeded == [BASELINE_SEED_VERSION], "baseline seed row must be present"
 
 
 async def test_downgrade_upgrade_round_trip(migrated_test_database: dict[str, str]) -> None:
