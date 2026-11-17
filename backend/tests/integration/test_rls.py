@@ -1,9 +1,9 @@
 """Day 010 integration tests: forced PostgreSQL row-level security.
 
 Proves the four Day 010 acceptance checks against a disposable
-``sentinel_ai_test`` database migrated to head (revision ``0003_rls_policies``).
-The development database is never mutated. Requires the local Docker core stack
-(``docker compose --profile core up -d``); CI runs unit tests only.
+``sentinel_ai_test`` database migrated to head (RLS applied at revision
+``0003_rls_policies``). The development database is never mutated. Requires the
+local Docker core stack (``docker compose --profile core up -d``).
 
 The isolation assertions deliberately run as the API role ``sentinel_app``
 (``NOBYPASSRLS``) so that a policy accidentally dropped, un-forced, or widened

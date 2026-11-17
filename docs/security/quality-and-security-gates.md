@@ -25,6 +25,7 @@ SentinelAI enforces continuous, automated quality and security checks on every c
 | **Linting & Best Practices** | `ruff check` | Repository Root | Blocking | Rules: E, W, F, I (isort), B (bugbear), C4, UP (pyupgrade). |
 | **Static Type Checking** | `mypy` | `backend/` | Blocking | Strict mode: `disallow_untyped_defs = true`, `warn_return_any = true`. |
 | **Unit Test Suite** | `pytest` | `backend/tests/unit/` | Blocking | Fast execution (< 1s); zero warnings allowed. |
+| **Cross-Tenant Isolation** | `pytest` | `backend/tests/security/` + `backend/tests/integration/` | Blocking in CI | Day 011. Runs against a **real PostgreSQL 16** service as the non-owner `sentinel_app` role (`NOBYPASSRLS`), never a mock. Proves RLS scoping, forged-`organization_id` rejection, nested-FK isolation, missing-context denial, and pooled-session safety. |
 | **SAST (Python Security)** | `bandit` | `backend/app/` | Blocking | Scans AST for security vulnerabilities, insecure randoms, and injection risks. |
 | **SCA (Dependency Vulnerabilities)** | `pip-audit` | `backend/requirements.lock` | Blocking | Queries PyPA Advisory DB & OSV for known CVEs. |
 | **Secret Detection** | `detect-secrets` | Repository Root | Blocking | Validates against audited `.secrets.baseline`; fails on new unreviewed secrets. |
@@ -62,4 +63,38 @@ bash scripts/check.sh
    * Update `backend/requirements.in` to a patched minimum version.
    * Recompile locks: `.venv/Scripts/python -m piptools compile backend/requirements.in -o backend/requirements.lock`.
    * Re-verify clean status with `pip-audit`.
+
+---
+
+## 5. Cross-Tenant Isolation CI Invariant (Day 011)
+
+Multi-tenant data isolation is treated as a **blocking CI invariant**, not a
+one-time manual check, because leaks surface in forgotten filters, nested
+resources, connection reuse, and forged identifiers — not the happy path.
+
+* **Real database, real role.** The `tenant-isolation` CI job
+  (`.github/workflows/ci.yml`) boots a **PostgreSQL 16** service container,
+  creates the least-privilege roles through the same first-boot bootstrap used
+  in development (`infra/docker/postgres/init-roles.sh`), migrates to head, then
+  runs `backend/tests/security/` and `backend/tests/integration/`. Isolation
+  assertions execute as the **non-owner API role `sentinel_app`**
+  (`NOBYPASSRLS`) — never a mock, never a superuser — so a policy that is
+  dropped, un-forced, or widened fails the gate instead of silently passing.
+* **What the suite locks down:** unfiltered reads stay tenant-scoped (RLS);
+  direct object references cannot read another org's rows and are
+  *indistinguishable* from missing ids (no existence leakage); forged
+  `organization_id` write bodies are rejected by the RLS `WITH CHECK`;
+  **nested cross-tenant foreign keys** are blocked (revision
+  `0004_nested_tenant_fk` binds `provider_configs(application_id,
+  organization_id)` to `applications(id, organization_id)` because PostgreSQL
+  does not police single-column FKs against RLS-hidden rows); missing context
+  denies reads *and* writes; and a `pool_size=1` connection cannot carry one
+  tenant's context into the next.
+* **Placeholder secrets in CI config are expected.** The job's
+  `POSTGRES_PASSWORD` / migrator / app DSNs are the documented local defaults
+  (identical to `.env.example`) and carry no real credential. `detect-secrets`
+  records them in `.secrets.baseline` under the §4.2 safe-placeholder flow.
+
+---
+
 

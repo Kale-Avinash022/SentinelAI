@@ -66,3 +66,62 @@ jobs:
             p/python
         continue-on-error: false
 
+  # ---------------------------------------------------------------------------
+  # Day 011 — cross-tenant isolation is a CI invariant, not a manual check.
+  # Runs the adversarial security suite and the RLS/schema integration suites
+  # against a *real* PostgreSQL 16 as the non-owner API role (sentinel_app,
+  # NOBYPASSRLS) — never a mock and never a superuser. Acceptance check 4:
+  # "CI uses the real non-owner PostgreSQL role."
+  # ---------------------------------------------------------------------------
+  tenant-isolation:
+    name: Cross-Tenant Isolation (real PostgreSQL, sentinel_app)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sentinel_ai
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # Role bootstrap defaults (infra/docker/postgres/init-roles.sh).
+          POSTGRES_MIGRATOR_USER: sentinel_migrator
+          POSTGRES_MIGRATOR_PASSWORD: sentinel_migrator_password
+          POSTGRES_APP_USER: sentinel_app
+          POSTGRES_APP_PASSWORD: sentinel_local_password
+        ports:
+          - 5432:5432
+        # First-boot entrypoint creates the least-privilege migrator
+        # (BYPASSRLS admin) and app (NOBYPASSRLS) roles exactly as in dev.
+        volumes:
+          - ./infra/docker/postgres/init-roles.sh:/docker-entrypoint-initdb.d/99-init-roles.sh:ro
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s
+          --health-retries 12
+
+    env:
+      ENVIRONMENT: test
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://sentinel_migrator:sentinel_migrator_password@127.0.0.1:5432/sentinel_ai
+      DATABASE_URL: postgresql+asyncpg://sentinel_app:sentinel_local_password@127.0.0.1:5432/sentinel_ai
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install locked development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.lock
+
+      - name: Apply migrations to head (schema owner)
+        run: python -m alembic -c backend/alembic.ini upgrade head
+
+      - name: Prove tenant isolation (security + RLS/schema integration)
+        run: python -m pytest backend/tests/security backend/tests/integration -q
+

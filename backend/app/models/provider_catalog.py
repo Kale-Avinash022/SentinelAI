@@ -113,9 +113,7 @@ class ProviderConfig(Base):
     )
     provider: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     model_name: Mapped[str] = mapped_column(sa.String(200), nullable=False)
-    application_id: Mapped[uuid.UUID | None] = mapped_column(
-        sa.Uuid(), sa.ForeignKey("applications.id"), nullable=True, index=True
-    )
+    application_id: Mapped[uuid.UUID | None] = mapped_column(sa.Uuid(), nullable=True, index=True)
     is_enabled: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, default=True)
     monthly_budget_usd: Mapped[float | None] = mapped_column(sa.Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -132,6 +130,16 @@ class ProviderConfig(Base):
             ["provider_catalog_entries.provider"],
             name="fk_provider_configs_provider_provider_catalog_entries",
         ),
+        # Tenant-scoped pointer: an application reference must belong to *this
+        # config's own organization*. RLS hides foreign rows from reads but does
+        # not police a single-column FK, so the pair (application_id,
+        # organization_id) is enforced here to stop cross-tenant nested
+        # references (Day 011). Nullable application_id stays unconstrained.
+        sa.ForeignKeyConstraint(
+            ["application_id", "organization_id"],
+            ["applications.id", "applications.organization_id"],
+            name="fk_provider_configs_application_org_applications",
+        ),
         sa.UniqueConstraint(
             "organization_id",
             "provider",
@@ -144,7 +152,13 @@ class ProviderConfig(Base):
     )
 
     organization: Mapped[Organization] = relationship(back_populates="provider_configs")
-    application: Mapped[Application | None] = relationship(back_populates="provider_configs")
+    application: Mapped[Application | None] = relationship(
+        "Application",
+        primaryjoin="and_(foreign(ProviderConfig.application_id) == Application.id, "
+        "foreign(ProviderConfig.organization_id) == Application.organization_id)",
+        viewonly=True,
+        uselist=False,
+    )
     catalog_entry: Mapped[ProviderCatalogEntry] = relationship(
         "ProviderCatalogEntry",
         primaryjoin="foreign(ProviderConfig.provider) == ProviderCatalogEntry.provider",

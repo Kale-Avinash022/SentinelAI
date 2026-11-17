@@ -66,6 +66,10 @@ class Application(Base):
             name="fk_applications_owner_user_org_users",
         ),
         sa.UniqueConstraint("organization_id", "name", name="uq_applications_org_name"),
+        # Composite FK target so tenant children (provider_configs) can bind the
+        # pointer *and* the tenant together, blocking cross-tenant nested
+        # references that naked single-column FKs would otherwise allow (Day 011).
+        sa.UniqueConstraint("id", "organization_id", name="uq_applications_id_org"),
         sa.CheckConstraint(
             f"status IN ({', '.join(sorted(repr(value) for value in APPLICATION_STATUS_VALUES))})",
             name="valid_application_status",
@@ -81,5 +85,8 @@ class Application(Base):
         uselist=False,
     )
     provider_configs: Mapped[list[ProviderConfig]] = relationship(
-        "ProviderConfig", back_populates="application", cascade="all, delete-orphan"
+        "ProviderConfig",
+        primaryjoin="and_(foreign(ProviderConfig.application_id) == Application.id, "
+        "foreign(ProviderConfig.organization_id) == Application.organization_id)",
+        viewonly=True,
     )
