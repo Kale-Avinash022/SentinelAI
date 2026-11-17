@@ -25,6 +25,7 @@ from alembic.config import Config
 from app.infrastructure.database import (
     application_database_url,
     migration_database_url,
+    set_tenant_context,
 )
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -36,7 +37,11 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 TEST_DB = "sentinel_ai_test"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_INI = REPO_ROOT / "backend" / "alembic.ini"
-TENANT_REVISION = "0002_tenants_and_rbac"
+# The current head after Day 010 (RLS policies) — the schema/seed tests assert
+# the isolated database is migrated all the way to this revision.
+TENANT_REVISION = "0003_rls_policies"
+# Deterministic demo organization seeded by revision 0002 (ADR-0004).
+DEMO_ORG_ID = "a1000000-0000-4000-8000-000000000001"
 
 DAY009_TABLES = {
     "organizations",
@@ -208,9 +213,13 @@ async def test_composite_fks_checks_and_org_indexes_exist(tenant_schema: dict[st
 
 
 async def test_database_rejects_invalid_domain_rows(tenant_schema: dict[str, str]) -> None:
-    """INSERTs run as sentinel_app (has INSERT) so failures are constraint
-    verdicts, not privilege errors."""
-    engine = create_async_engine(tenant_schema["app_url"], poolclass=NullPool)
+    """Constraint verdicts are checked on the admin/migration role, which holds
+    full DML and (since Day 010) ``BYPASSRLS``. Running here rather than as
+    ``sentinel_app`` keeps the assertion meaningful under forced row-level
+    security: an invalid write fails on a *constraint*, not on the RLS boundary,
+    so a genuine schema defect cannot be masked by the tenant filter.
+    """
+    engine = create_async_engine(tenant_schema["migrator_url"], poolclass=NullPool)
 
     async def attempt(label: str, sql: str) -> None:
         try:
@@ -319,11 +328,13 @@ async def test_sentinel_app_cannot_grant_itself_privileges(
 
 
 async def test_sentinel_app_can_dml_tenant_rows(tenant_schema: dict[str, str]) -> None:
-    """Least-privilege is not least-capability-by-accident: legitimate tenant
-    INSERT/UPDATE must still succeed for the app role."""
+    """Least-privilege is not least-capability-by-accident: with a correct
+    transaction-local tenant context (Day 010), legitimate ``sentinel_app``
+    INSERT/UPDATE/SELECT on that organization's rows still succeed."""
     engine = create_async_engine(tenant_schema["app_url"], poolclass=NullPool)
     try:
         async with engine.begin() as conn:
+            await set_tenant_context(conn, DEMO_ORG_ID)
             await conn.execute(
                 sa.text(
                     "INSERT INTO applications (id, organization_id, owner_user_id, name, "
@@ -338,7 +349,8 @@ async def test_sentinel_app_can_dml_tenant_rows(tenant_schema: dict[str, str]) -
                     "UPDATE organizations SET name = 'Renamed Demo' WHERE slug = 'sentinel-demo'"
                 )
             )
-        async with engine.connect() as conn:
+        async with engine.begin() as conn:
+            await set_tenant_context(conn, DEMO_ORG_ID)
             can_read = (
                 await conn.execute(
                     sa.text("SELECT count(*) FROM role_assignments WHERE role = 'admin'")

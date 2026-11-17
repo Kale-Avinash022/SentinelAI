@@ -20,7 +20,13 @@ echo "=========================================================="
 
 psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" <<-EOSQL
     -- 1. Create Migration Owner Role
-    -- Has CREATEDB for test database isolation, but NOSUPERUSER and NOBYPASSRLS
+    -- Has CREATEDB for test database isolation, but NOSUPERUSER and NOCREATEROLE.
+    -- BYPASSRLS: this is the separate, audited admin/migration role (Day 010).
+    -- Its tenant tables use FORCE ROW LEVEL SECURITY, which would otherwise lock
+    -- the table *owner* out; BYPASSRLS lets migrations and cross-tenant admin work
+    -- proceed. It is NOT the API role: the runtime sentinel_app stays NOBYPASSRLS.
+    -- BYPASSRLS is a superuser-only attribute, so it can only be set here at first
+    -- boot (a migration running as this role cannot grant it to itself).
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${POSTGRES_MIGRATOR_USER}') THEN
@@ -32,7 +38,7 @@ psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" 
                 INHERIT 
                 NOCREATEROLE 
                 NOREPLICATION 
-                NOBYPASSRLS;
+                BYPASSRLS;
         END IF;
     END
     \$\$;
