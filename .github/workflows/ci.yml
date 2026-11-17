@@ -85,12 +85,15 @@ jobs:
     # PostgreSQL credentials come from repository secrets — never hard-coded.
     # These protect only an ephemeral, empty, runner-local database that exists
     # for the duration of the job and is destroyed afterwards, but keeping them
-    # as secrets avoids committing password-looking literals. Create these three
+    # as secrets avoids committing password-looking literals. Create these four
     # secrets under Settings → Secrets and variables → Actions, using URL-safe
     # (alphanumeric) values so they embed cleanly in the asyncpg DSNs below:
     #   CI_POSTGRES_SUPERUSER_PASSWORD  POSTGRES_PASSWORD for the service image
     #   CI_POSTGRES_MIGRATOR_PASSWORD   sentinel_migrator role (matches DSN)
     #   CI_POSTGRES_APP_PASSWORD        sentinel_app role (matches DSN)
+    #   CI_APP_SECRET_KEY               Settings.secret_key for the app shell;
+    #     importing app.main builds the module-scope ASGI app, which validates
+    #     SECRET_KEY (min 32 chars) from the environment — CI has no .env.
     services:
       postgres:
         image: postgres:16-alpine
@@ -112,6 +115,7 @@ jobs:
 
     env:
       ENVIRONMENT: test
+      SECRET_KEY: ${{ secrets.CI_APP_SECRET_KEY }}
       MIGRATION_DATABASE_URL: postgresql+asyncpg://sentinel_migrator:${{ secrets.CI_POSTGRES_MIGRATOR_PASSWORD }}@127.0.0.1:5432/sentinel_ai
       DATABASE_URL: postgresql+asyncpg://sentinel_app:${{ secrets.CI_POSTGRES_APP_PASSWORD }}@127.0.0.1:5432/sentinel_ai
 
