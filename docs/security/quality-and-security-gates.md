@@ -90,10 +90,17 @@ resources, connection reuse, and forged identifiers — not the happy path.
   does not police single-column FKs against RLS-hidden rows); missing context
   denies reads *and* writes; and a `pool_size=1` connection cannot carry one
   tenant's context into the next.
-* **Placeholder secrets in CI config are expected.** The job's
-  `POSTGRES_PASSWORD` / migrator / app DSNs are the documented local defaults
-  (identical to `.env.example`) and carry no real credential. `detect-secrets`
-  records them in `.secrets.baseline` under the §4.2 safe-placeholder flow.
+* **CI credentials come from GitHub Secrets.** The job's `POSTGRES_PASSWORD`,
+  migrator and app passwords — and the asyncpg DSNs that embed them — are all
+  interpolated from `secrets.CI_POSTGRES_SUPERUSER_PASSWORD`,
+  `secrets.CI_POSTGRES_MIGRATOR_PASSWORD` and `secrets.CI_POSTGRES_APP_PASSWORD`;
+  no password literal is ever committed. (They protect only an ephemeral, empty,
+  runner-local database that is destroyed at the end of the job, but keeping them
+  as secrets avoids password-looking text in the repository and keeps
+  `detect-secrets` clean on `ci.yml`.) Create these three secrets under
+  **Settings → Secrets and variables → Actions**, using URL-safe (alphanumeric)
+  values so they embed cleanly in the DSNs, or the `tenant-isolation` job will
+  fail to start PostgreSQL.
 
 ---
 
