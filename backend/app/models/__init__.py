@@ -20,6 +20,7 @@ from app.models.provider_catalog import (
     ProviderConfig,
     ProviderCredential,
 )
+from app.models.session import RefreshSession
 from app.models.tenant import Organization
 from app.models.user import RoleAssignment, User
 
@@ -35,6 +36,7 @@ __all__ = [
     "ProviderCatalogEntry",
     "ProviderConfig",
     "ProviderCredential",
+    "RefreshSession",
     "RoleAssignment",
     "User",
     "metadata",

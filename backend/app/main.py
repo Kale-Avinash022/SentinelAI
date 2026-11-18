@@ -22,12 +22,19 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.health import CheckResult, build_default_probe_set
 from app.api.health import router as health_router
+from app.api.v1.auth import router as auth_router
 from app.api.v1.router import router as v1_router
+from app.auth.rate_limit import LoginRateLimiter
+from app.auth.repository import PostgresAuthRepository
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import BodySizeLimitMiddleware, CorrelationIdMiddleware
 from app.core.settings import Settings, get_settings
-from app.infrastructure.database import create_engine_from_url, dispose_engine
+from app.infrastructure.database import (
+    create_engine_from_url,
+    create_session_factory,
+    dispose_engine,
+)
 
 logger = get_logger("app.main")
 
@@ -52,6 +59,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             try:
                 app.state.db_engine = create_engine_from_url(
                     settings.database_url, pool_size=5, max_overflow=10
+                )
+                app.state.auth_repository = PostgresAuthRepository(
+                    create_session_factory(app.state.db_engine)
                 )
             except Exception as exc:  # noqa: BLE001 - probe boundary: classify, never leak
                 logger.warning(
@@ -112,6 +122,14 @@ def create_app(
     app.state.settings = cfg
     app.state.db_engine = None
     app.state.redis_client = None
+    # Auth store is built in lifespan once the engine exists; until then it is
+    # None and the dependencies fail closed. The login throttle is in-process
+    # and needs no dependency, so it is ready immediately.
+    app.state.auth_repository = None
+    app.state.login_rate_limiter = LoginRateLimiter(
+        max_attempts=cfg.login_max_attempts,
+        window_seconds=cfg.login_window_seconds,
+    )
     if readiness_probes is not None:
         app.state.readiness_checks = readiness_probes
         app.state.probes_overridden = True
@@ -129,6 +147,7 @@ def create_app(
 
     app.include_router(health_router)
     app.include_router(v1_router)
+    app.include_router(auth_router)
     return app
 
 

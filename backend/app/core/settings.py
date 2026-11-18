@@ -54,6 +54,32 @@ class Settings(BaseSettings):
 
     docs_enabled: bool = True
 
+    # --- Authentication / sessions (Day 012) --------------------------------
+    # The HMAC signing key is derived from ``secret_key``; only a single
+    # algorithm is ever accepted so a token can not downgrade to "none".
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    jwt_issuer: str = "sentinelai-api"
+    jwt_audience: str = "sentinelai-dashboard"
+    # Access tokens are short-lived (memory-only on the client); refresh
+    # sessions are longer-lived, stored hashed, and rotated on every use.
+    access_token_ttl_seconds: int = Field(default=900, ge=60, le=3600)
+    refresh_token_ttl_seconds: int = Field(default=1_209_600, ge=3600, le=2_592_000)
+    # Cookie hardening. ``cookie_secure`` is tri-state: ``None`` derives the
+    # value from ``environment`` (Secure on in production, off for local HTTP);
+    # an explicit ``True``/``False`` overrides that. Refresh always uses
+    # HttpOnly + SameSite=lax and is gated by an Origin/CSRF check server-side.
+    cookie_secure: bool | None = None
+    refresh_cookie_name: str = "sentinel_refresh"
+    csrf_cookie_name: str = "sentinel_csrf"
+    csrf_header_name: str = "X-CSRF-Token"
+    # Comma-separated exact origins permitted to send credentialed refresh
+    # requests (CSRF/origin defence). Loopback dev origins by default.
+    allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Simple fixed-window login throttle (per client+email) to blunt
+    # enumeration/brute force. Count/seconds are conservative defaults.
+    login_max_attempts: int = Field(default=8, ge=1, le=100)
+    login_window_seconds: int = Field(default=300, ge=30, le=3600)
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, value: str) -> str:
@@ -72,6 +98,25 @@ class Settings(BaseSettings):
                 "the migrator identity is reserved for Alembic."
             )
         return value
+
+    @property
+    def secure_cookies(self) -> bool:
+        """Effective ``Secure`` cookie flag.
+
+        Explicit ``cookie_secure`` wins; otherwise Secure is forced on only for
+        production (HTTPS). Local development over plain HTTP stays off so the
+        cookie is actually sent by the browser, documented in the runbook.
+        """
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.environment == "production"
+
+    @property
+    def allowed_origin_set(self) -> frozenset[str]:
+        """Parsed, de-duplicated set of permitted credentialed-request origins."""
+        return frozenset(
+            origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()
+        )
 
 
 @functools.lru_cache(maxsize=1)

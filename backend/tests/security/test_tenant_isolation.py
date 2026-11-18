@@ -61,7 +61,9 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 TEST_DB = "sentinel_ai_test"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_INI = REPO_ROOT / "backend" / "alembic.ini"
-HEAD_REVISION = "0004_nested_tenant_fk"
+# Documentation reference for the guard this suite was written against; the
+# fixtures always migrate the disposable database to the live head.
+HEAD_REVISION = "0005_refresh_sessions"
 
 # Tenant-owned, RLS-protected tables (must match revision 0003).
 TENANT_TABLES = (
@@ -568,12 +570,17 @@ async def test_shared_catalog_visible_to_every_tenant_and_read_only_for_app(
 
 
 async def test_current_http_surface_exposes_no_tenant_data_endpoints(shell_app: Any) -> None:
-    """Lock the invariant at the edge until auth/RACI endpoints land (Day 012+).
+    """Lock the invariant at the edge as scoped auth endpoints land (Day 012+).
 
     Tenant data is only reachable through the RLS-scoped repository layer proven
     above. This guards the HTTP surface so that adding a tenant-resource route
     without a tenant context fails the security gate on purpose, forcing an
-    explicit, reviewed update here when Day 012 introduces scoped endpoints."""
+    explicit, reviewed update here when later days introduce resource endpoints.
+
+    Paths are read from the OpenAPI schema, not ``app.routes``: routers are
+    included lazily in this FastAPI version, so only the generated schema is a
+    faithful, flattened view of the exposed surface.
+    """
     tenant_resource_words = (
         "application",
         "organization",
@@ -582,13 +589,24 @@ async def test_current_http_surface_exposes_no_tenant_data_endpoints(shell_app: 
         "provider",
         "credential",
     )
-    paths = {getattr(route, "path", "") for route in shell_app.routes}
+    paths = set(shell_app.openapi()["paths"])
     offenders = {
         path
         for path in paths
         if path.startswith("/api/") and any(word in path.lower() for word in tenant_resource_words)
     }
     assert not offenders, f"unscoped tenant-data endpoint(s) exposed: {sorted(offenders)}"
-    # The only versioned endpoints today are the stateless shell helpers.
+    # The versioned surface is the stateless shell helpers plus the Day 012
+    # auth endpoints (login/refresh/logout/me) — none expose tenant *resource*
+    # rows: auth resolves identity through the reviewed SECURITY DEFINER path
+    # and every session read is RLS-scoped.
+    allowed = {
+        "/api/v1/version",
+        "/api/v1/echo",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/me",
+    }
     api_paths = {path for path in paths if path.startswith("/api/")}
-    assert api_paths <= {"/api/v1/version", "/api/v1/echo"}, api_paths
+    assert api_paths <= allowed, api_paths
