@@ -565,17 +565,21 @@ async def test_shared_catalog_visible_to_every_tenant_and_read_only_for_app(
 
 
 # ---------------------------------------------------------------------------
-# HTTP surface: no unscoped tenant endpoint may exist today
+# HTTP surface: only reviewed, principal-scoped tenant endpoints may exist
 # ---------------------------------------------------------------------------
 
 
-async def test_current_http_surface_exposes_no_tenant_data_endpoints(shell_app: Any) -> None:
-    """Lock the invariant at the edge as scoped auth endpoints land (Day 012+).
+async def test_current_http_surface_exposes_no_unscoped_tenant_endpoints(
+    shell_app: Any,
+) -> None:
+    """Lock the invariant at the edge as scoped tenant endpoints land (Day 012+).
 
-    Tenant data is only reachable through the RLS-scoped repository layer proven
-    above. This guards the HTTP surface so that adding a tenant-resource route
-    without a tenant context fails the security gate on purpose, forcing an
-    explicit, reviewed update here when later days introduce resource endpoints.
+    Tenant data is only reachable through the RLS-scoped repository/store layer
+    proven above. This guards the HTTP surface so that adding a tenant-resource
+    route *without* a tenant context fails the security gate on purpose: every
+    path below must be an explicit, reviewed allow-list entry, and every
+    tenant-data route must derive its organization from the authenticated
+    bearer principal — never from client-supplied input.
 
     Paths are read from the OpenAPI schema, not ``app.routes``: routers are
     included lazily in this FastAPI version, so only the generated schema is a
@@ -588,18 +592,12 @@ async def test_current_http_surface_exposes_no_tenant_data_endpoints(shell_app: 
         "role",
         "provider",
         "credential",
+        "audit",
     )
-    paths = set(shell_app.openapi()["paths"])
-    offenders = {
-        path
-        for path in paths
-        if path.startswith("/api/") and any(word in path.lower() for word in tenant_resource_words)
-    }
-    assert not offenders, f"unscoped tenant-data endpoint(s) exposed: {sorted(offenders)}"
-    # The versioned surface is the stateless shell helpers plus the Day 012
-    # auth endpoints (login/refresh/logout/me) — none expose tenant *resource*
-    # rows: auth resolves identity through the reviewed SECURITY DEFINER path
-    # and every session read is RLS-scoped.
+    # Day 012 auth surface + Day 013 application / scoped API-key / audit-trail
+    # routes. Every one is JWT-authenticated, RBAC-guarded (ADR-0004) and
+    # hard-scoped to ``principal.organization_id`` with RLS behind it; foreign
+    # ids answer the indistinguishable 404, so no cross-tenant read is possible.
     allowed = {
         "/api/v1/version",
         "/api/v1/echo",
@@ -607,6 +605,41 @@ async def test_current_http_surface_exposes_no_tenant_data_endpoints(shell_app: 
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
         "/api/v1/auth/me",
+        "/api/v1/applications",
+        "/api/v1/applications/{application_id}",
+        "/api/v1/applications/{application_id}/api-keys",
+        "/api/v1/applications/{application_id}/api-keys/{key_id}/revoke",
+        "/api/v1/applications/{application_id}/api-keys/{key_id}/rotate",
+        "/api/v1/audit-logs",
     }
+    paths = set(shell_app.openapi()["paths"])
+    offenders = {
+        path
+        for path in paths
+        if path.startswith("/api/")
+        and path not in allowed
+        and any(word in path.lower() for word in tenant_resource_words)
+    }
+    assert not offenders, f"unscoped tenant-data endpoint(s) exposed: {sorted(offenders)}"
     api_paths = {path for path in paths if path.startswith("/api/")}
     assert api_paths <= allowed, api_paths
+
+    # Every tenant-data route must sit behind the bearer scheme, so the
+    # organization can only come from the verified token. The stateless shell
+    # helpers and the identity-establishment auth routes are the reviewed
+    # exceptions; /me and all Day 013 resource routes require the bearer.
+    bearer_exempt = {
+        "/api/v1/version",
+        "/api/v1/echo",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/logout",
+    }
+    operations = shell_app.openapi()["paths"]
+    for path, item in operations.items():
+        if not path.startswith("/api/") or path in bearer_exempt:
+            continue
+        for operation in item.values():
+            assert any("HTTPBearer" in scheme for scheme in operation.get("security", [])), (
+                f"{path} exposes an operation without bearer security"
+            )

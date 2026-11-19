@@ -30,6 +30,9 @@ DAY008_TABLES = {
     "model_catalog_entries",
     # Added in Day 012: hashed rotating refresh sessions.
     "refresh_sessions",
+    # Added in Day 013: hashed scoped machine credentials + append-only audit.
+    "api_keys",
+    "audit_logs",
 }
 
 

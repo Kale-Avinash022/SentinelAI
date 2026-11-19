@@ -10,7 +10,9 @@ cross-module string relationship targets always resolve during mapper
 configuration; keep new modules in dependency order.
 """
 
+from app.models.api_key import KEY_SCOPE_VALUES, ApiKey, KeyScope
 from app.models.application import APPLICATION_STATUS_VALUES, Application, ApplicationStatus
+from app.models.audit import AUDIT_ACTOR_TYPE_VALUES, AuditActorType, AuditLog
 from app.models.base import Base, metadata
 from app.models.provider_catalog import (
     SECRET_REF_PREFIX,
@@ -26,11 +28,16 @@ from app.models.user import RoleAssignment, User
 
 __all__ = [
     "APPLICATION_STATUS_VALUES",
-    "SECRET_REF_PREFIX",
+    "AUDIT_ACTOR_TYPE_VALUES",
+    "KEY_SCOPE_VALUES",
+    "ApiKey",
     "Application",
     "ApplicationStatus",
+    "AuditActorType",
+    "AuditLog",
     "Base",
     "CredentialStatus",
+    "KeyScope",
     "ModelCatalogEntry",
     "Organization",
     "ProviderCatalogEntry",
@@ -38,6 +45,7 @@ __all__ = [
     "ProviderCredential",
     "RefreshSession",
     "RoleAssignment",
+    "SECRET_REF_PREFIX",
     "User",
     "metadata",
 ]

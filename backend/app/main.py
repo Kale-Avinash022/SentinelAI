@@ -22,8 +22,12 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.health import CheckResult, build_default_probe_set
 from app.api.health import router as health_router
+from app.api.v1.applications import router as applications_router
+from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.keys import router as keys_router
 from app.api.v1.router import router as v1_router
+from app.auth.api_keys import ApiKeyDirectory
 from app.auth.rate_limit import LoginRateLimiter
 from app.auth.repository import PostgresAuthRepository
 from app.core.errors import register_exception_handlers
@@ -35,6 +39,7 @@ from app.infrastructure.database import (
     create_session_factory,
     dispose_engine,
 )
+from app.services.applications import PostgresApplicationStore
 
 logger = get_logger("app.main")
 
@@ -60,9 +65,13 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 app.state.db_engine = create_engine_from_url(
                     settings.database_url, pool_size=5, max_overflow=10
                 )
-                app.state.auth_repository = PostgresAuthRepository(
-                    create_session_factory(app.state.db_engine)
-                )
+                # One session factory shared by every Postgres-backed store:
+                # human auth (Day 012), API-key resolution and the
+                # application/key/audit stores (Day 013).
+                session_factory = create_session_factory(app.state.db_engine)
+                app.state.auth_repository = PostgresAuthRepository(session_factory)
+                app.state.api_key_directory = ApiKeyDirectory(session_factory)
+                app.state.application_store = PostgresApplicationStore(session_factory)
             except Exception as exc:  # noqa: BLE001 - probe boundary: classify, never leak
                 logger.warning(
                     "database engine could not be created",
@@ -126,6 +135,9 @@ def create_app(
     # None and the dependencies fail closed. The login throttle is in-process
     # and needs no dependency, so it is ready immediately.
     app.state.auth_repository = None
+    # Day 013 stores follow the same fail-closed pattern.
+    app.state.api_key_directory = None
+    app.state.application_store = None
     app.state.login_rate_limiter = LoginRateLimiter(
         max_attempts=cfg.login_max_attempts,
         window_seconds=cfg.login_window_seconds,
@@ -148,6 +160,9 @@ def create_app(
     app.include_router(health_router)
     app.include_router(v1_router)
     app.include_router(auth_router)
+    app.include_router(applications_router)
+    app.include_router(keys_router)
+    app.include_router(audit_router)
     return app
 
 

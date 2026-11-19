@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     login_max_attempts: int = Field(default=8, ge=1, le=100)
     login_window_seconds: int = Field(default=300, ge=30, le=3600)
 
+    # --- API keys (Day 013) --------------------------------------------------
+    # Rotation overlap: a rotated predecessor stays valid for at most this
+    # many seconds (and never past its own expiry), giving callers a deliberate
+    # cutover window. 0 collapses the overlap — revocation semantics then apply
+    # immediately on rotation too.
+    api_key_rotation_grace_seconds: int = Field(default=3600, ge=0, le=86_400)
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, value: str) -> str:
