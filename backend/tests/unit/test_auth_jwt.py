@@ -135,7 +135,11 @@ def test_algorithm_none_downgrade_is_rejected() -> None:
             "aud": settings.jwt_audience,
             "role": "owner",
         },
-        None,  # type: ignore[arg-type]  # PyJWT requires a None key for the "none" alg
+        # PyJWT's NoneAlgorithm normalizes "" to a None key; typed as str so
+        # no ``type: ignore`` is needed whether or not ``cryptography`` is
+        # installed (its absence flips ``AllowedPrivateKeys`` to ``Never`` and
+        # would make any ignore comment "unused" in CI).
+        "",
         algorithm="none",
     )
     with pytest.raises(TokenError):
