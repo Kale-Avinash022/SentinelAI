@@ -25,11 +25,13 @@ from app.api.health import router as health_router
 from app.api.v1.applications import router as applications_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.configs import router as configs_router
 from app.api.v1.keys import router as keys_router
 from app.api.v1.router import router as v1_router
 from app.auth.api_keys import ApiKeyDirectory
 from app.auth.rate_limit import LoginRateLimiter
 from app.auth.repository import PostgresAuthRepository
+from app.configs.vault import FernetVault
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import BodySizeLimitMiddleware, CorrelationIdMiddleware
@@ -40,6 +42,7 @@ from app.infrastructure.database import (
     dispose_engine,
 )
 from app.services.applications import PostgresApplicationStore
+from app.services.config_versions import PostgresConfigVersionStore
 
 logger = get_logger("app.main")
 
@@ -72,6 +75,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 app.state.auth_repository = PostgresAuthRepository(session_factory)
                 app.state.api_key_directory = ApiKeyDirectory(session_factory)
                 app.state.application_store = PostgresApplicationStore(session_factory)
+                # Day 014: prompt bodies are sealed with a key derived from the
+                # same single master secret the JWT layer uses, so there is no
+                # second credential to provision and no plain template at rest.
+                config_vault = FernetVault(settings.secret_key.get_secret_value())
+                app.state.config_payload_vault = config_vault
+                app.state.config_version_store = PostgresConfigVersionStore(
+                    session_factory, config_vault
+                )
             except Exception as exc:  # noqa: BLE001 - probe boundary: classify, never leak
                 logger.warning(
                     "database engine could not be created",
@@ -138,6 +149,9 @@ def create_app(
     # Day 013 stores follow the same fail-closed pattern.
     app.state.api_key_directory = None
     app.state.application_store = None
+    # Day 014 version store + its payload vault, built in lifespan.
+    app.state.config_payload_vault = None
+    app.state.config_version_store = None
     app.state.login_rate_limiter = LoginRateLimiter(
         max_attempts=cfg.login_max_attempts,
         window_seconds=cfg.login_window_seconds,
@@ -163,6 +177,7 @@ def create_app(
     app.include_router(applications_router)
     app.include_router(keys_router)
     app.include_router(audit_router)
+    app.include_router(configs_router)
     return app
 
 

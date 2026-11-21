@@ -298,16 +298,26 @@ async def test_detail_check_rejects_raw_key_payloads(
 
 
 async def test_python_serializer_refuses_secret_bearing_details() -> None:
-    """The writer layer rejects before the database is even involved."""
-    from app.services.audit import serialize_detail
+    """The writer layer rejects before the database is even involved.
 
-    with pytest.raises(ValueError, match="API key material"):
+    Day 014 widened the rule from "no raw API key" to "no raw API key and no
+    sealed payload": once prompt bodies are encrypted at rest, a ciphertext
+    blob is just as much secret material as ``sk_live_``.
+    """
+    from app.services.audit import FERNET_TOKEN_MARKER, SEALED_PAYLOAD_MARKER, serialize_detail
+
+    guard = "secret or sealed-payload material"
+    with pytest.raises(ValueError, match=guard):
         serialize_detail({"key": f"{API_KEY_PREFIX}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
     # Nested structures are scanned recursively, not just top-level strings.
-    with pytest.raises(ValueError, match="API key material"):
+    with pytest.raises(ValueError, match=guard):
         serialize_detail({"outer": {"inner": [f"prefix-{API_KEY_PREFIX}bbbb"]}})
+    with pytest.raises(ValueError, match=guard):
+        serialize_detail({"body": f"{SEALED_PAYLOAD_MARKER}v1:{FERNET_TOKEN_MARKER}abcdef"})
     # Benign metadata serializes with stable, canonical (compact) ordering.
     assert serialize_detail({"b": 1, "a": "x"}) == '{"a":"x","b":1}'
+    # A content hash is hex-only and stays writable next to a sealed-body marker.
+    assert serialize_detail({"content_hash": "a" * 64}) == '{"content_hash":"' + "a" * 64 + '"}'
 
 
 # ---------------------------------------------------------------------------

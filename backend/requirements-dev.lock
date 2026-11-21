@@ -39,7 +39,9 @@ certifi==2026.10.23
     #   httpx
     #   requests
 cffi==2.1.1
-    # via argon2-cffi-bindings
+    # via
+    #   argon2-cffi-bindings
+    #   cryptography
 charset-normalizer==3.5.2
     # via requests
 click==8.5.1
@@ -51,6 +53,8 @@ colorama==0.4.6
     #   bandit
     #   build
     #   pytest
+cryptography==50.0.2
+    # via -r requirements.in
 cyclonedx-python-lib==11.12.0
     # via pip-audit
 defusedxml==0.7.1

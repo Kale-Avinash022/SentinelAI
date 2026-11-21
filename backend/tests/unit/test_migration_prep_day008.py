@@ -6,9 +6,11 @@ revision, when generated, will contain exactly the reviewed objects:
 
 1. SQLAlchemy can render CREATE TABLE DDL for every new model.
 2. Alembic's autogenerate comparator sees exactly the reviewed tables
-   (the eight Day 008 models plus Day 012's ``refresh_sessions``) as net
-   additions against an empty schema (env.py's ``include_object`` rule
-   keeps reflected objects such as ``schema_info`` out of the drop side).
+   (the eight Day 008 models plus Day 012's ``refresh_sessions``, Day 013's
+   ``api_keys``/``audit_logs`` and Day 014's ``config_versions``/
+   ``config_activations``) as net additions against an empty schema (env.py's
+   ``include_object`` rule keeps reflected objects such as ``schema_info`` out
+   of the drop side).
 3. The cross-tenant composite foreign keys survive DDL rendering.
 """
 
@@ -33,6 +35,9 @@ DAY008_TABLES = {
     # Added in Day 013: hashed scoped machine credentials + append-only audit.
     "api_keys",
     "audit_logs",
+    # Added in Day 014: immutable config/prompt versions + CAS activation history.
+    "config_versions",
+    "config_activations",
 }
 
 

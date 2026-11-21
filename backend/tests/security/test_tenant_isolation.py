@@ -593,11 +593,14 @@ async def test_current_http_surface_exposes_no_unscoped_tenant_endpoints(
         "provider",
         "credential",
         "audit",
+        "config",
+        "prompt",
     )
     # Day 012 auth surface + Day 013 application / scoped API-key / audit-trail
-    # routes. Every one is JWT-authenticated, RBAC-guarded (ADR-0004) and
-    # hard-scoped to ``principal.organization_id`` with RLS behind it; foreign
-    # ids answer the indistinguishable 404, so no cross-tenant read is possible.
+    # routes + Day 014 config & prompt version routes. Every one is
+    # JWT-authenticated, RBAC-guarded (ADR-0004) and hard-scoped to
+    # ``principal.organization_id`` with RLS behind it; foreign ids answer the
+    # indistinguishable 404, so no cross-tenant read is possible.
     allowed = {
         "/api/v1/version",
         "/api/v1/echo",
@@ -611,6 +614,17 @@ async def test_current_http_surface_exposes_no_unscoped_tenant_endpoints(
         "/api/v1/applications/{application_id}/api-keys/{key_id}/revoke",
         "/api/v1/applications/{application_id}/api-keys/{key_id}/rotate",
         "/api/v1/audit-logs",
+        # Day 014: no PUT/PATCH/DELETE exists anywhere under /configs — version
+        # history is append-only by grant, so there is nothing unscoped to
+        # expose. Bodies leave only through the audited reveal-body route.
+        "/api/v1/configs/versions",
+        "/api/v1/configs/versions/{version_id}",
+        "/api/v1/configs/versions/{version_id}/reveal-body",
+        "/api/v1/configs/{kind}/{name}/activation",
+        "/api/v1/configs/{kind}/{name}/activations",
+        "/api/v1/configs/{kind}/{name}/diff",
+        "/api/v1/configs/{kind}/{name}/last-known-good",
+        "/api/v1/configs/{kind}/{name}/versions",
     }
     paths = set(shell_app.openapi()["paths"])
     offenders = {

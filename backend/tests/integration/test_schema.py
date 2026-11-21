@@ -37,12 +37,13 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 TEST_DB = "sentinel_ai_test"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_INI = REPO_ROOT / "backend" / "alembic.ini"
-# The current head after Day 013 (hashed scoped API keys + append-only audit
-# trail, with their least-privilege grants, RLS policies and the reviewed
-# SECURITY DEFINER key lookup; on top of Day 012's rotating refresh sessions) —
-# the schema/seed tests assert the isolated database is migrated all the way to
-# this revision.
-TENANT_REVISION = "0006_api_keys_and_audit"
+# The current head after Day 014 (immutable config/prompt version history +
+# CAS activation records, with their least-privilege column-level grants, RLS
+# policies and the widened audit secret-material CHECK; on top of Day 013's
+# hashed scoped API keys + append-only audit trail, and Day 012's rotating
+# refresh sessions) — the schema/seed tests assert the isolated database is
+# migrated all the way to this revision.
+TENANT_REVISION = "0007_config_prompt_versions"
 # Deterministic demo organization seeded by revision 0002 (ADR-0004).
 DEMO_ORG_ID = "a1000000-0000-4000-8000-000000000001"
 
