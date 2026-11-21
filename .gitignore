@@ -43,7 +43,6 @@ coverage.xml
 *.cert
 *.crt
 secrets.json
-.secrets.baseline
 
 # Node / Frontend
 node_modules/
