@@ -41,11 +41,9 @@ from app.gateway.contracts import (
     ProviderFailure,
     ProviderTimeoutError,
 )
-from app.gateway.fakes import FakeScenario
 from app.gateway.registry import (
-    DEFAULT_PROVIDER_KEY,
     ProviderRegistry,
-    build_fake_registry,
+    build_registry,
 )
 
 
@@ -79,7 +77,10 @@ class ChatGateway:
         provider_key: str | None = None,
     ) -> ProviderCompletion:
         """Resolve → request → timed adapter call → normalized result."""
-        provider = self._registry.resolve(provider_key or DEFAULT_PROVIDER_KEY)
+        # No key means *the registry's* default — which is the fake alias in
+        # Day 015 builds and the gated real adapter in Day 016 builds. The
+        # service itself never hard-codes a provider identity.
+        provider = self._registry.resolve(provider_key)
         effective_timeout = self._clamp_timeout(timeout_ms)
         request = CompletionRequest(
             provider=provider.name,
@@ -123,14 +124,14 @@ def build_gateway(settings: Settings) -> ChatGateway:
     """Construct the process gateway from validated settings.
 
     Local/test seed the seven deterministic fakes and honour
-    ``settings.llm_fake_scenario`` as the default behaviour. Production builds
-    an empty registry so the gateway fails closed until a real adapter is
-    wired (Day 016) — a fake never answers production traffic.
+    ``settings.llm_fake_scenario`` as the default behaviour; from Day 016 a
+    settings-selected real provider (local/OpenAI/Anthropic) replaces the
+    default once its destination, credential reference and spend cap all
+    pass the gate (:func:`~app.gateway.registry.build_registry`). Production
+    builds an empty registry so the gateway fails closed until a real adapter
+    is explicitly wired — a fake never answers production traffic.
     """
-    if settings.environment == "production":
-        registry = ProviderRegistry()  # dark: resolve() raises 503
-    else:
-        registry = build_fake_registry(FakeScenario(settings.llm_fake_scenario))
+    registry = build_registry(settings)
     return ChatGateway(
         registry,
         default_timeout_ms=settings.llm_default_timeout_ms,

@@ -21,6 +21,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 Environment = Literal["development", "test", "production"]
 
 
+def _parse_price_or_none(text: str) -> float | None:
+    """Tolerant float parse for validators: ``None`` means 'invalid'."""
+    try:
+        value = float(text.strip())
+    except ValueError:
+        return None
+    return value if value >= 0 else None
+
+
 class Settings(BaseSettings):
     """Validated runtime configuration for the FastAPI modular monolith."""
 
@@ -100,6 +109,80 @@ class Settings(BaseSettings):
     # Which deterministic fake behaviour ``sentinel-auto`` resolves to. Only
     # honoured outside production; a validated member of FakeScenario.
     llm_fake_scenario: str = "success"
+
+    # --- Real providers (Day 016) --------------------------------------------
+    # Provider *selection* lives only here — never in a chat request body.
+    # ``fake`` keeps the Day 015 deterministic default; ``local`` addresses an
+    # OpenAI-compatible endpoint on this machine; ``openai``/``anthropic`` are
+    # config-gated real vendors whose credentials resolve via env-var
+    # *references* (raw or vault-sealed) and whose spend is capped below.
+    llm_default_provider: str = "fake"
+    # When true, real-provider adapters run through LiteLLM's own mock layer:
+    # the identical code path with zero network and zero billing. Never honoured
+    # in production, where the registry stays dark until truly wired.
+    # (Named with the LLM_ prefix on purpose: the legacy LITELLM_MOCK variable
+    # in local .env files must not silently flip test builds into mock mode.)
+    llm_litellm_mock: bool = False
+    # Optional local OpenAI-compatible endpoint (Ollama, vLLM, LM Studio…).
+    # The SSRF guard accepts only https endpoints or plain-http on loopback,
+    # and never a URL with embedded credentials.
+    llm_local_base_url: str = ""
+    llm_local_model: str = "sentinel-local"
+    llm_openai_model: str = "gpt-4o-mini"
+    llm_anthropic_model: str = "claude-3-5-sonnet-20241022"
+    # Env-var *names* holding provider credentials (values may be raw keys or
+    # ``fernet:v1:`` vault-sealed). The keys themselves are never settings.
+    llm_openai_credential_ref: str = "OPENAI_API_KEY"
+    llm_anthropic_credential_ref: str = "ANTHROPIC_API_KEY"
+    # Extra ``provider/model[@base_url]`` destinations, comma-separated.
+    # Empty means the built-in pair for the selected provider only.
+    llm_allowed_destinations: str = ""
+    # Per-call live spend cap in USD, enforced *before* the request goes out
+    # against the planned maximum output. ``0`` disables real calls entirely
+    # (the builder refuses to wire uncapped live adapters).
+    llm_spend_cap_usd: float = Field(default=0.05, ge=0, le=10)
+    # Planning price per million output tokens, per provider ("openai=2.50,
+    # anthropic=15"), used only for the pre-call cap estimate — the real
+    # ledger price arrives with Day 017's attempt accounting.
+    llm_price_per_mtok_output: str = "openai=2.50,anthropic=15"
+
+    @field_validator("llm_default_provider")
+    @classmethod
+    def _validate_default_provider(cls, value: str) -> str:
+        allowed = {"fake", "local", "openai", "anthropic"}
+        normalized = value.strip().lower()
+        if normalized not in allowed:
+            raise ValueError(f"llm_default_provider must be one of: {', '.join(sorted(allowed))}")
+        return normalized
+
+    @field_validator("llm_local_base_url")
+    @classmethod
+    def _validate_local_base_url(cls, value: str) -> str:
+        # Local import keeps core dependency-free, same as the fake-scenario
+        # validator above; the allowlist module owns the SSRF shape rules.
+        from app.gateway.allowlist import normalize_base_url
+
+        if not value.strip():
+            return ""
+        return normalize_base_url(value)
+
+    @field_validator("llm_price_per_mtok_output")
+    @classmethod
+    def _validate_price_map(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            return ""
+        for pair in normalized.split(","):
+            name, sep, price = pair.partition("=")
+            if not sep or not name.strip() or _parse_price_or_none(price) is None:
+                raise ValueError(
+                    "llm_price_per_mtok_output must be 'provider=usd' pairs, "
+                    f"got invalid entry {pair!r}."
+                )
+        return ",".join(
+            f"{n.strip().lower()}={p.strip()}"
+            for n, _, p in (pair.partition("=") for pair in normalized.split(","))
+        )
 
     @field_validator("llm_fake_scenario")
     @classmethod
