@@ -87,6 +87,33 @@ class Settings(BaseSettings):
     # immediately on rotation too.
     api_key_rotation_grace_seconds: int = Field(default=3600, ge=0, le=86_400)
 
+    # --- LLM gateway (Day 015) ----------------------------------------------
+    # The chat deadline the gateway enforces regardless of what an adapter
+    # would eventually return. 15s matches the brief's synchronous critical path.
+    llm_default_timeout_ms: int = Field(default=15_000, ge=250, le=60_000)
+    # Hard ceiling on a caller-supplied per-request timeout, so a client cannot
+    # pin a worker open far beyond the operating point.
+    llm_max_timeout_ms: int = Field(default=30_000, ge=250, le=120_000)
+    # Upper bound on a request's requested output tokens; the fake ignores the
+    # value but the contract carries it for real adapters and budgets.
+    llm_max_output_tokens: int = Field(default=4_096, ge=1, le=32_000)
+    # Which deterministic fake behaviour ``sentinel-auto`` resolves to. Only
+    # honoured outside production; a validated member of FakeScenario.
+    llm_fake_scenario: str = "success"
+
+    @field_validator("llm_fake_scenario")
+    @classmethod
+    def _validate_fake_scenario(cls, value: str) -> str:
+        # Local import keeps core (no domain deps) clean while still pinning
+        # the value to the closed scenario enum the registry understands.
+        from app.gateway.fakes import FakeScenario
+
+        try:
+            return FakeScenario(value.strip().lower()).value
+        except ValueError as exc:
+            allowed = ", ".join(sorted(member.value for member in FakeScenario))
+            raise ValueError(f"llm_fake_scenario must be one of: {allowed}") from exc
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, value: str) -> str:

@@ -625,6 +625,12 @@ async def test_current_http_surface_exposes_no_unscoped_tenant_endpoints(
         "/api/v1/configs/{kind}/{name}/diff",
         "/api/v1/configs/{kind}/{name}/last-known-good",
         "/api/v1/configs/{kind}/{name}/versions",
+        # Day 015: the chat gateway is a synchronous compute endpoint, not a
+        # tenant-data store. It derives nothing from the body (organization and
+        # provider selection are server-side), is bearer-authenticated and
+        # role-gated, and persists no prompt/response content — so it is a
+        # reviewed addition to the surface, not an unscoped tenant resource.
+        "/api/v1/llm/chat",
     }
     paths = set(shell_app.openapi()["paths"])
     offenders = {

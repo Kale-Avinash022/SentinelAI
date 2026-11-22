@@ -27,6 +27,7 @@ from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.configs import router as configs_router
 from app.api.v1.keys import router as keys_router
+from app.api.v1.llm import router as llm_router
 from app.api.v1.router import router as v1_router
 from app.auth.api_keys import ApiKeyDirectory
 from app.auth.rate_limit import LoginRateLimiter
@@ -36,6 +37,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import BodySizeLimitMiddleware, CorrelationIdMiddleware
 from app.core.settings import Settings, get_settings
+from app.gateway.service import build_gateway
 from app.infrastructure.database import (
     create_engine_from_url,
     create_session_factory,
@@ -156,6 +158,11 @@ def create_app(
         max_attempts=cfg.login_max_attempts,
         window_seconds=cfg.login_window_seconds,
     )
+    # Day 015: the chat gateway opens no connection and reads no secret, so it
+    # is safe to build here (not in the lifespan) exactly like the rate limiter.
+    # Local/test seed deterministic fakes; production builds a dark registry so
+    # chat fails closed until a real adapter is wired (Day 016).
+    app.state.chat_gateway = build_gateway(cfg)
     if readiness_probes is not None:
         app.state.readiness_checks = readiness_probes
         app.state.probes_overridden = True
@@ -178,6 +185,7 @@ def create_app(
     app.include_router(keys_router)
     app.include_router(audit_router)
     app.include_router(configs_router)
+    app.include_router(llm_router)
     return app
 
 
